@@ -55,53 +55,62 @@ This is not a wrapper. This is not a plugin. This is a **complete development en
 
 ## Architecture
 
+Resonant IDE uses a **thin client + server orchestration** model. The desktop app handles UI rendering, authentication, local LLM discovery, and tool execution. All AI orchestration intelligence (system prompts, tool selection, agentic loop, LLM provider routing) runs server-side in `RG_Axtention_IDE`.
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Resonant IDE (Electron)                │
-│                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │  VS Code Core │  │ Resonant AI  │  │  Extensions   │  │
-│  │  (Editor,     │  │  Extension   │  │  Marketplace  │  │
-│  │   Terminal,   │  │  (Built-in)  │  │  (Open VSX)   │  │
-│  │   Debug, Git) │  │              │  │               │  │
-│  └──────────────┘  └──────┬───────┘  └───────────────┘  │
-│                           │                              │
-│  ┌────────────────────────┼────────────────────────────┐ │
-│  │           Resonant AI Extension Core                │ │
-│  │                                                     │ │
-│  │  ┌─────────────┐ ┌──────────────┐ ┌──────────────┐ │ │
-│  │  │ LLM Provider │ │ Tool Engine  │ │ Auth Service │ │ │
-│  │  │ (Multi-model)│ │ (59 tools)   │ │ (DSID/JWT)   │ │ │
-│  │  └──────┬──────┘ └──────┬───────┘ └──────┬───────┘ │ │
-│  │         │               │                │          │ │
-│  │  ┌──────┴──────┐ ┌──────┴───────┐ ┌──────┴───────┐ │ │
-│  │  │ Local LLM   │ │ SAST &       │ │ Memory &     │ │ │
-│  │  │ (Ollama)    │ │ Architecture │ │ Hash Sphere  │ │ │
-│  │  └─────────────┘ └──────────────┘ └──────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-│                           │                              │
-└───────────────────────────┼──────────────────────────────┘
-                            │ HTTPS/WSS
-                            ▼
-              ┌──────────────────────────┐
-              │  Resonant Genesis Cloud   │
-              │  (30+ microservices)      │
-              │                           │
-              │  Gateway → Auth → Chat    │
-              │  Agents → Memory → Billing│
-              │  Blockchain → Marketplace │
-              └──────────────────────────┘
+┌──────────────────────────────────────┐      ┌──────────────────────────────────┐
+│     Resonant IDE (Electron Client)   │      │    RG_Axtention_IDE (Server)     │
+│                                      │      │                                  │
+│  ┌────────────┐  ┌────────────────┐  │      │  ┌──────────────────────────────┐│
+│  │ VS Code    │  │ Resonant AI    │  │ SSE  │  │  Agentic Loop Engine         ││
+│  │ Core       │  │ Extension      │◄─┼──────┼──│  - System prompt (protected) ││
+│  │ (Editor,   │  │                │  │      │  │  - Smart tool selection      ││
+│  │  Terminal, │  │ Responsibilities│  │      │  │  - LLM calls (multi-prov)   ││
+│  │  Debug)    │  │ ─────────────  │──┼──────┼─►│  - Message history mgmt     ││
+│  │            │  │ • Auth (JWT)   │  │ POST │  │  - Retry + rate limiting    ││
+│  │            │  │ • UI rendering │  │      │  │  - BYOK key resolution      ││
+│  │            │  │ • Tool executor│  │      │  └──────────────────────────────┘│
+│  │            │  │ • LLM discovery│  │      │                                  │
+│  │            │  │   (Ollama)     │  │      │  ┌──────────────────────────────┐│
+│  └────────────┘  └────────────────┘  │      │  │  59 Tool Definitions         ││
+│                                      │      │  │  (never leave the server)    ││
+│  NO orchestration intelligence       │      │  └──────────────────────────────┘│
+│  NO system prompts                   │      │                                  │
+│  NO tool definitions                 │      │  Providers: Groq, OpenAI,        │
+│  (this repo is public)               │      │  Anthropic, Google, DeepSeek,    │
+│                                      │      │  Mistral + user BYOK keys        │
+└──────────────────────────────────────┘      └─────────────┬────────────────────┘
+                                                            │
+                                                            ▼
+                                              ┌──────────────────────────┐
+                                              │  Resonant Genesis Cloud   │
+                                              │  (30+ microservices)      │
+                                              │                           │
+                                              │  Gateway → Auth → Chat    │
+                                              │  Agents → Memory → Billing│
+                                              │  Blockchain → Marketplace │
+                                              └──────────────────────────┘
 ```
+
+### How It Works
+
+1. User sends a prompt in the IDE chat
+2. Client POSTs to server via `/api/v1/ide/agent-stream`
+3. Server selects tools, builds system prompt, calls LLM
+4. Server streams SSE events: `thinking`, `text`, `execute_tool`, `stats`, `done`
+5. On `execute_tool` → client runs the tool locally → POSTs result back
+6. Server resumes agentic loop → calls LLM again → repeat until done
+7. For local Ollama: client sends `local_llm` config, server proxies the call
 
 ### Extension Source Files (`extensions/resonant-ai/src/`)
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| `extension.ts` | Main entry point — agentic loop, tool dispatch, auth wiring | ~1,400 |
+| `extension.ts` | Main entry point — SSE client, tool dispatch, auth wiring | ~800 |
 | `toolExecutor.ts` | All 59 tool implementations — file I/O, git, web, deploy, etc. | ~2,300 |
-| `toolDefinitions.ts` | Tool schemas organized by category with smart filtering | ~900 |
-| `languageModelProvider.ts` | Multi-provider LLM routing (cloud + local) | ~600 |
-| `localLLMProvider.ts` | Ollama/LM Studio/llama.cpp local model support | ~300 |
+| `toolDefinitions.ts` | Local tool schemas (for Ollama fallback) | ~200 |
+| `languageModelProvider.ts` | Multi-provider LLM discovery (cloud + local) | ~600 |
+| `localLLMProvider.ts` | Ollama/LM Studio/llama.cpp local model discovery | ~300 |
 | `chatViewProvider.ts` | Sidebar webview chat UI with streaming | ~900 |
 | `authProvider.ts` | VS Code AuthenticationProvider for Resonant Genesis | ~180 |
 | `authService.ts` | Token management, refresh, DSID binding | ~280 |
@@ -113,9 +122,13 @@ This is not a wrapper. This is not a plugin. This is a **complete development en
 | `profileWebview.ts` | User profile and account management | ~250 |
 | `agentProvider.ts` | VS Code Chat Participant integration | ~190 |
 
+> **Note:** Tool definitions and orchestration intelligence (system prompts, tool selection algorithm) live server-side in [`RG_Axtention_IDE`](https://github.com/DevSwat-ResonantGenesis/RG_Axtention_IDE) (private repo). This client repo is public and contains no proprietary AI logic.
+
 ---
 
-## 59 Built-in Tools (11 Categories)
+## 59 Tools (11 Categories)
+
+Tool **definitions** and **selection** are managed server-side. Tool **execution** happens locally on your machine — the AI can read your files, run your commands, and manage your git without any code leaving your machine unless you explicitly share it.
 
 ### Core (12 tools)
 `file_read` · `file_write` · `file_edit` · `multi_edit` · `file_list` · `file_delete` · `file_move` · `grep_search` · `find_by_name` · `run_command` · `command_status` · `read_terminal`
@@ -142,7 +155,7 @@ This is not a wrapper. This is not a plugin. This is a **complete development en
 `platform_api_search` · `platform_api_call` — access to **433 backend endpoints** across 17 services
 
 ### Deploy (2 tools)
-`droplet_ssh_command` · `droplet_docker_status`
+`ssh_run` · `deploy_web_app`
 
 ### Trajectory (1 tool)
 `trajectory_search` — semantic search over conversation history
