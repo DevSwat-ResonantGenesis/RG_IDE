@@ -298,10 +298,13 @@ function processServerAgentLoop(
 								}
 								if (!resolved) {
 									resolved = true;
+									const tokenCount = p.tokens || p.total_tokens || p.tokens_used
+										|| (p.usage ? (p.usage.total_tokens || (p.usage.prompt_tokens || 0) + (p.usage.completion_tokens || 0)) : 0)
+										|| 0;
 									resolve({
 										loops: p.loops || 0,
 										toolCalls: p.tool_calls || totalToolCalls,
-										tokens: p.tokens || 0,
+										tokens: tokenCount,
 										provider: p.provider || '',
 										model: p.model || '',
 										fallbackChain,
