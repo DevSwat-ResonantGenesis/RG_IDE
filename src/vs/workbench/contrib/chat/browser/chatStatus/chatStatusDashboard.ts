@@ -177,7 +177,7 @@ export class ChatStatusDashboard extends DomWidget {
 				run: () => this.runCommandAndClose(() => this.openerService.open(URI.parse(defaultChat.manageSettingsUrl))),
 			}));
 
-			const completionsQuotaIndicator = completionsQuota && (completionsQuota.total > 0 || completionsQuota.unlimited) ? this.createQuotaIndicator(this.element, this._store, completionsQuota, localize('completionsLabel', "Inline Suggestions"), false) : undefined;
+			// Inline Suggestions quota removed — Resonant IDE uses its own completion system
 			const chatQuotaIndicator = chatQuota && (chatQuota.total > 0 || chatQuota.unlimited) ? this.createQuotaIndicator(this.element, this._store, chatQuota, localize('chatsLabel', "Chat messages"), false) : undefined;
 			const premiumChatLabel = premiumChatQuota?.overageEnabled && !premiumChatQuota?.unlimited ? localize('includedPremiumChatsLabel', "Included premium requests") : localize('premiumChatsLabel', "Premium requests");
 			const premiumChatQuotaIndicator = premiumChatQuota && (premiumChatQuota.total > 0 || premiumChatQuota.unlimited) ? this.createQuotaIndicator(this.element, this._store, premiumChatQuota, premiumChatLabel, true) : undefined;
@@ -186,7 +186,7 @@ export class ChatStatusDashboard extends DomWidget {
 				this.element.appendChild($('div.description', undefined, localize('limitQuota', "Allowance resets {0}.", resetDateHasTime ? this.dateTimeFormatter.value.format(new Date(resetDate)) : this.dateFormatter.value.format(new Date(resetDate)))));
 			}
 
-			if (this.chatEntitlementService.entitlement === ChatEntitlement.Free && (Number(chatQuota?.percentRemaining) <= 25 || Number(completionsQuota?.percentRemaining) <= 25)) {
+			if (this.chatEntitlementService.entitlement === ChatEntitlement.Free && Number(chatQuota?.percentRemaining) <= 25) {
 				const upgradeProButton = this._store.add(new Button(this.element, { ...defaultButtonStyles, hoverDelegate: nativeHoverDelegate, secondary: this.canUseChat() /* use secondary color when chat can still be used */ }));
 				upgradeProButton.label = localize('upgradeToCopilotPro', "Upgrade to Resonant Pro");
 				this._store.add(upgradeProButton.onDidClick(() => this.runCommandAndClose('workbench.action.chat.upgradePlan')));
@@ -198,10 +198,7 @@ export class ChatStatusDashboard extends DomWidget {
 					return;
 				}
 
-				const { chat: chatQuota, completions: completionsQuota, premiumChat: premiumChatQuota } = this.chatEntitlementService.quotas;
-				if (completionsQuota) {
-					completionsQuotaIndicator?.(completionsQuota);
-				}
+				const { chat: chatQuota, premiumChat: premiumChatQuota } = this.chatEntitlementService.quotas;
 				if (chatQuota) {
 					chatQuotaIndicator?.(chatQuota);
 				}
@@ -215,7 +212,6 @@ export class ChatStatusDashboard extends DomWidget {
 		else if (this.chatEntitlementService.anonymous && this.chatEntitlementService.sentiment.installed) {
 			addSeparator(localize('anonymousTitle', "Resonant AI Usage"));
 
-			this.createQuotaIndicator(this.element, this._store, localize('quotaLimited', "Limited"), localize('completionsLabel', "Inline Suggestions"), false);
 			this.createQuotaIndicator(this.element, this._store, localize('quotaLimited', "Limited"), localize('chatsLabel', "Chat messages"), false);
 		}
 
@@ -270,19 +266,7 @@ export class ChatStatusDashboard extends DomWidget {
 			}
 		}
 
-		// Settings
-		{
-			const chatSentiment = this.chatEntitlementService.sentiment;
-			addSeparator(localize('inlineSuggestions', "Inline Suggestions"), chatSentiment.installed && !chatSentiment.disabled && !chatSentiment.untrusted ? toAction({
-				id: 'workbench.action.openChatSettings',
-				label: localize('settingsLabel', "Settings"),
-				tooltip: localize('settingsTooltip', "Open Settings"),
-				class: ThemeIcon.asClassName(Codicon.settingsGear),
-				run: () => this.runCommandAndClose(() => this.commandService.executeCommand('workbench.action.openSettings', { query: `@id:${defaultChat.completionsEnablementSetting} @id:${defaultChat.nextEditSuggestionsSetting}` })),
-			}) : undefined);
-
-			this.createSettings(this.element, this._store);
-		}
+		// Inline Suggestions settings removed — Resonant IDE uses its own completion system
 
 		// Model Selection
 		{

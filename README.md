@@ -184,21 +184,135 @@ Real-time ghost text code suggestions via FIM (Fill-in-the-Middle) across 30+ la
 ### Provider Selection
 The AI automatically selects the best available provider, or you can manually choose via the model picker. BYOK users get priority routing to their preferred provider.
 
+### LLM Fallback Chain — Why Your Prompts Never Fail
+
+One of the most important features under the hood is the **intelligent LLM fallback chain**. When you send a prompt, the system doesn't just try one provider and give up — it executes a multi-step resilience pipeline that ensures your request always gets answered:
+
+```
+User sends prompt
+       │
+       ▼
+┌─────────────────────────────────┐
+│  1. Try user's preferred BYOK   │  ← Your own API key (e.g. Claude Sonnet)
+│     provider + model            │
+└──────────────┬──────────────────┘
+               │ If 401/429/500/timeout...
+               ▼
+┌─────────────────────────────────┐
+│  2. Try user's other BYOK keys  │  ← e.g. OpenAI, Groq, Google keys
+│     (round-robin available keys)│
+└──────────────┬──────────────────┘
+               │ If all BYOK keys fail...
+               ▼
+┌─────────────────────────────────┐
+│  3. Fall back to platform pool   │  ← Resonant Genesis shared API keys
+│     (Groq → OpenAI → Anthropic) │
+└──────────────┬──────────────────┘
+               │ Always succeeds (unless all providers are down)
+               ▼
+         Response streamed back
+```
+
+**Why this matters:**
+- **API keys expire or hit rate limits** — instead of showing an error, the system automatically tries the next available provider
+- **You stay in flow** — no need to manually switch models when one provider has an outage
+- **BYOK keys are always tried first** — your preferred provider gets priority; the platform pool is only a safety net
+- **Full transparency** — the response includes `fallback` SSE events showing exactly which providers were tried and which one succeeded
+
+<div align="center">
+
+**BYOK Direct — User's own key succeeds on first try**
+
+![Fallback — BYOK Direct](docs/screenshots/fallback-byok-direct.png)
+
+**Fallback Chain — BYOK key fails, system tries next available BYOK key**
+
+![Fallback Chain — Multi-BYOK](docs/screenshots/fallback-chain-byok.png)
+
+</div>
+
+> Every fallback attempt is logged with provider name, model, and HTTP status. You can see the full chain in the response stats panel.
+
 ---
 
-## SAST, Dependency Analysis & Full-Stack Architecture Engine
+## AST Code Visualizer — Local Static Analysis Engine
 
-The built-in analysis engine performs deep static analysis locally — **no code leaves your machine**:
+The built-in **Code Visualizer** is a full AST-based static analysis engine that runs entirely on your machine using Python. When the AI needs to understand your codebase architecture, it calls the Code Visualizer tools automatically — no cloud services, no code uploads, everything stays local.
 
-- **SAST (Static Application Security Testing)** — Security vulnerability scanning, forbidden dependency checks, architecture drift scoring (0-100)
-- **AST Parsing** — Full abstract syntax tree analysis for Python, JavaScript, TypeScript
-- **Dependency Graphs** — Import chains, call graphs, service-to-service dependency mapping
-- **Full-Stack Architecture Mapping** — Auto-discovers microservice boundaries, API routes, data flows, and inter-service communication patterns
-- **Dead Code Detection** — Unreachable functions, unused imports, orphaned files
-- **Pipeline Auto-Detection** — Discovers user_registration, login, chat_flow, billing, agent_execution pipelines across the full stack
-- **Governance Enforcement** — Policy validation, trust-tier compliance, execution boundary checks
-- **Multi-Repo Comparison** — Cross-repository analysis and change detection
-- **Graph Janitor** — Health scoring with actionable remediation suggestions
+### What It Analyzes
+
+- **AST Parsing** — Full abstract syntax tree analysis for **Python** (using the `ast` module), **JavaScript**, and **TypeScript** (regex-based)
+- **Node Discovery** — Services, files, functions, classes, API endpoints, database connections, external service calls
+- **Connection Mapping** — Imports, function calls, API calls, database queries, HTTP requests, class inheritance
+- **Pipeline Detection** — Automatically discovers user_registration, login, chat_flow, billing, agent_execution pipelines across the full stack
+- **Dead Code Detection** — Unreachable functions, unused imports, orphaned files classified as LIVE, Dormant, Experimental, Deprecated, or Invalid
+- **Governance Engine** — Reachability contracts, forbidden dependency rules, architecture drift scoring (0-100), CI-ready enforcement output
+- **SAST** — Security vulnerability patterns, forbidden dependency checks, trust-tier compliance
+
+### 8 Analysis Commands
+
+The AI has access to 8 specialized analysis tools:
+
+| Tool | What It Does |
+|------|-------------|
+| `code_visualizer_scan` | Full AST scan — discovers all services, functions, classes, endpoints, imports, pipelines |
+| `code_visualizer_functions` | List all functions and API endpoints with file paths, line numbers, decorators, routes |
+| `code_visualizer_trace` | Trace a specific function — incoming callers, outgoing calls, full dependency chain |
+| `code_visualizer_governance` | Run governance analysis — reachability, forbidden deps, drift score, CI pass/fail |
+| `code_visualizer_graph` | Get the full node + connection graph for visualization |
+| `code_visualizer_pipeline` | Discover and map multi-service pipelines (e.g. login flow across auth → gateway → chat) |
+| `code_visualizer_filter` | Filter nodes by file pattern, service, or custom criteria |
+| `code_visualizer_by_type` | Get all nodes of a specific type (functions, classes, endpoints, imports, etc.) |
+
+### How It Works Under the Hood
+
+```
+User asks: "Analyze this project's architecture"
+       │
+       ▼
+┌─────────────────────────────────────┐
+│  AI selects code_visualizer_scan    │
+│  tool from 59 available tools       │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  Client runs: python3 cv_cli.py     │  ← Runs locally on YOUR machine
+│  scan /path/to/project              │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  analyzer.py parses every .py/.js/  │
+│  .ts file using AST parsing         │
+│                                     │
+│  Extracts: nodes, connections,      │
+│  services, pipelines, dead code     │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  JSON report returned to AI         │
+│  (up to 12K chars, smart-summarized)│
+│                                     │
+│  AI presents findings in natural    │
+│  language with actionable insights  │
+└─────────────────────────────────────┘
+```
+
+<div align="center">
+
+**AST Analysis — Scan Start & Output**
+
+![AST Analysis — Start & Output](docs/screenshots/ast-analysis-start-output.png)
+
+**AST Analysis — Full Report**
+
+![AST Analysis — Full Report](docs/screenshots/ast-analysis-full.png)
+
+</div>
+
+> The Code Visualizer source lives in `extensions/resonant-ai/code_visualizer/` — analyzer.py (1034 lines), governance.py (384 lines), and cv_cli.py (155 lines). Licensed under the Resonant Genesis Source Available License.
 
 ---
 
