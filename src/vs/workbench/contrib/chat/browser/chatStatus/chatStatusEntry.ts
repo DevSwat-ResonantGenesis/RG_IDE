@@ -145,13 +145,10 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 				}
 			}
 
-			// Signed out
+			// Signed out — just show normal icon, no warning text
+			// (Resonant IDE handles auth via its own extension)
 			else if (this.chatEntitlementService.entitlement === ChatEntitlement.Unknown) {
-				const signedOutWarning = localize('notSignedIn', "Signed out");
-
-				text = `${this.chatEntitlementService.anonymous ? '$(copilot)' : '$(copilot-not-connected)'} ${signedOutWarning}`;
-				ariaLabel = signedOutWarning;
-				kind = 'prominent';
+				// no-op: keep default '$(copilot)' icon
 			}
 
 			// Free Quota Exceeded

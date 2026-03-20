@@ -102,6 +102,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 				reject(new Error('Login timed out'));
 			}, 5 * 60 * 1000);
 
+			let resolved = false;
 			this._localServer = http.createServer((req, res) => {
 				const url = new URL(req.url || '/', `http://localhost:${port}`);
 				if (url.pathname === '/auth-callback') {
@@ -110,6 +111,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 						res.writeHead(200, { 'Content-Type': 'text/html' });
 						res.end('<html><body style="font-family:sans-serif;background:#1e1e1e;color:#ccc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="color:#4ade80">Signed In!</h2><p>Return to Resonant IDE.</p></div></body></html>');
 						clearTimeout(timer);
+						resolved = true;
 						setTimeout(() => { if (this._localServer) { this._localServer.close(); this._localServer = null; } }, 500);
 						resolve(token);
 					} else {
@@ -120,8 +122,10 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 				}
 			});
 
+			const authUrl = `${apiUrl}/auth/desktop-callback?port=${port}`;
+
 			this._localServer.listen(port, '127.0.0.1', () => {
-				vscode.env.openExternal(vscode.Uri.parse(`${apiUrl}/auth/desktop-callback?port=${port}`));
+				vscode.env.openExternal(vscode.Uri.parse(authUrl));
 			});
 
 			this._localServer.on('error', (err) => {
@@ -129,6 +133,19 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 				clearTimeout(timer);
 				reject(err);
 			});
+
+			// Poll-and-retry: if user had to sign in on the browser first,
+			// the port param is lost. After 8s, silently re-open the callback
+			// URL (cookie is now set, so redirect succeeds immediately).
+			let retryCount = 0;
+			const retryTimer = setInterval(async () => {
+				if (resolved || !this._localServer) { clearInterval(retryTimer); return; }
+				retryCount++;
+				if (retryCount <= 6) {
+					console.log(`[Resonant Auth Provider] No token after ${retryCount * 4}s — retry #${retryCount}`);
+					await vscode.env.openExternal(vscode.Uri.parse(authUrl));
+				}
+			}, 8000);
 		});
 	}
 

@@ -34,9 +34,9 @@ export class SettingsPanelProvider {
 			vscode.StatusBarAlignment.Right,
 			-1000, // far right
 		);
-		this.statusBarItem.text = '$(sign-in) Sign In';
-		this.statusBarItem.tooltip = 'Click to sign in to Resonant IDE';
-		this.statusBarItem.command = 'resonant.login';
+		this.statusBarItem.text = '$(account) Resonant IDE';
+		this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+		this.statusBarItem.command = 'resonant.openSettingsPanel';
 		this.statusBarItem.show();
 	}
 
@@ -57,9 +57,17 @@ export class SettingsPanelProvider {
 				this.statusBarItem.command = 'resonant.openSettingsPanel';
 			}
 		} else {
-			this.statusBarItem.text = '$(sign-in) Sign In';
-			this.statusBarItem.tooltip = 'Click to sign in to Resonant IDE';
-			this.statusBarItem.command = 'resonant.login';
+			this.statusBarItem.text = '$(account) Resonant IDE';
+			this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+			this.statusBarItem.command = 'resonant.openSettingsPanel';
+		}
+	}
+
+	/** Called by extension.ts when auth state changes — refreshes panel + status bar */
+	async onAuthChanged(): Promise<void> {
+		await this.updateStatusBar();
+		if (this.panel) {
+			await this.refreshPanel();
 		}
 	}
 

@@ -283,9 +283,9 @@ export class ResonantAuthService {
 	 * is set so the redirect succeeds immediately.
 	 */
 	private _pollForTokenAndRetry(authUrl: string, _port: number): void {
-		const POLL_INTERVAL_MS = 3000;
-		const FIRST_RETRY_AFTER_MS = 15000;
-		const MAX_RETRIES = 4;
+		const POLL_INTERVAL_MS = 2000;
+		const FIRST_RETRY_AFTER_MS = 8000;
+		const MAX_RETRIES = 6;
 		let elapsed = 0;
 		let retryCount = 0;
 

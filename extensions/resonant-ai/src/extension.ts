@@ -717,7 +717,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		authService.onDidChangeAuth(async (loggedIn) => {
 			console.log(`[Resonant AI] Auth changed: loggedIn=${loggedIn}`);
-			await settingsPanel.updateStatusBar();
+			await settingsPanel.onAuthChanged();
 			chatViewProvider.onAuthChanged(loggedIn);
 			if (loggedIn) {
 				lmProvider.refreshModels();
