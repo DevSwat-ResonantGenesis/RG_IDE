@@ -65,14 +65,14 @@ jobs:
           hdiutil create -volname "Resonant IDE" -srcfolder "$APP_PATH" -ov -format UDZO "../ResonantIDE-arm64.dmg"
 
       - name: Upload .app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ResonantIDE-darwin-arm64
           path: ../VSCode-darwin-arm64/*.app
           retention-days: 30
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ResonantIDE-darwin-arm64-dmg
           path: ../ResonantIDE-arm64.dmg
@@ -122,7 +122,7 @@ jobs:
           hdiutil create -volname "Resonant IDE" -srcfolder "$APP_PATH" -ov -format UDZO "../ResonantIDE-x64.dmg"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ResonantIDE-darwin-x64-dmg
           path: ../ResonantIDE-x64.dmg
@@ -165,7 +165,7 @@ jobs:
           tar -czf ResonantIDE-linux-x64.tar.gz VSCode-linux-x64/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ResonantIDE-linux-x64
           path: ../ResonantIDE-linux-x64.tar.gz
