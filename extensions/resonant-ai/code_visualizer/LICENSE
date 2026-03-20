@@ -1,0 +1,16 @@
+Resonant Genesis Code Visualizer
+Copyright (c) 2024-2026 Resonant Genesis / DevSwat
+Founded and built by Louie Nemesh
+
+This component is part of Resonant IDE and is licensed under the
+Resonant Genesis Source Available License (see /LICENSE.txt in the
+repository root).
+
+COMMERCIAL USE IS STRICTLY PROHIBITED without prior written permission.
+
+For commercial licensing, OEM agreements, or enterprise use, contact:
+  Website: https://dev-swat.com/contact
+  Email:   contact@dev-swat.com
+
+The Code Visualizer performs local AST-based static analysis of codebases.
+No code leaves your machine — all analysis runs locally via Python.
