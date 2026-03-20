@@ -3,12 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { $, append, EventType, addDisposableListener, EventHelper, disposableWindowInterval, getWindow } from '../../../../../base/browser/dom.js';
-import { Gesture, EventType as TouchEventType } from '../../../../../base/browser/touch.js';
+import { $, append, disposableWindowInterval, getWindow } from '../../../../../base/browser/dom.js';
 import { ActionBar } from '../../../../../base/browser/ui/actionbar/actionbar.js';
 import { Button } from '../../../../../base/browser/ui/button/button.js';
 import { renderLabelWithIcons } from '../../../../../base/browser/ui/iconLabel/iconLabels.js';
-import { Checkbox } from '../../../../../base/browser/ui/toggle/toggle.js';
 import { IAction, toAction, WorkbenchActionExecutedEvent, WorkbenchActionExecutedClassification } from '../../../../../base/common/actions.js';
 import { cancelOnDispose } from '../../../../../base/common/cancellation.js';
 import { Codicon } from '../../../../../base/common/codicons.js';
@@ -18,7 +16,6 @@ import { MutableDisposable, DisposableStore } from '../../../../../base/common/l
 import { parseLinkedText } from '../../../../../base/common/linkedText.js';
 import { language } from '../../../../../base/common/platform.js';
 import { ThemeIcon } from '../../../../../base/common/themables.js';
-import { isObject } from '../../../../../base/common/types.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { IInlineCompletionsService } from '../../../../../editor/browser/services/inlineCompletionsService.js';
 import { ILanguageService } from '../../../../../editor/common/languages/language.js';
@@ -34,9 +31,8 @@ import { IMarkdownRendererService } from '../../../../../platform/markdown/brows
 import { Link } from '../../../../../platform/opener/browser/link.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
-import { defaultButtonStyles, defaultCheckboxStyles } from '../../../../../platform/theme/browser/defaultStyles.js';
+import { defaultButtonStyles } from '../../../../../platform/theme/browser/defaultStyles.js';
 import { DomWidget } from '../../../../../platform/domWidget/browser/domWidget.js';
-import { EditorResourceAccessor, SideBySideEditor } from '../../../../common/editor.js';
 import { IChatEntitlementService, ChatEntitlementService, ChatEntitlement, IQuotaSnapshot, getChatPlanName } from '../../../../services/chat/common/chatEntitlementService.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { IChatSessionsService } from '../../common/chatSessionsService.js';
@@ -51,22 +47,6 @@ import { isCompletionsEnabled } from '../../../../../editor/common/services/comp
 
 const defaultChat = product.defaultChatAgent;
 
-interface ISettingsAccessor {
-	readSetting: () => boolean;
-	writeSetting: (value: boolean) => Promise<void>;
-}
-type ChatSettingChangedClassification = {
-	owner: 'bpasero';
-	comment: 'Provides insight into chat settings changed from the chat status entry.';
-	settingIdentifier: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The identifier of the setting that changed.' };
-	settingMode?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The optional editor language for which the setting changed.' };
-	settingEnablement: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether the setting got enabled or disabled.' };
-};
-type ChatSettingChangedEvent = {
-	settingIdentifier: string;
-	settingMode?: string;
-	settingEnablement: 'enabled' | 'disabled';
-};
 
 const gaugeForeground = registerColor('gauge.foreground', {
 	dark: inputValidationInfoBorder,
@@ -133,10 +113,10 @@ export class ChatStatusDashboard extends DomWidget {
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@IEditorService private readonly editorService: IEditorService,
 		@IHoverService private readonly hoverService: IHoverService,
-		@ILanguageService private readonly languageService: ILanguageService,
+		@ILanguageService _languageService: ILanguageService,
 		@IOpenerService private readonly openerService: IOpenerService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
-		@ITextResourceConfigurationService private readonly textResourceConfigurationService: ITextResourceConfigurationService,
+		@ITextResourceConfigurationService _textResourceConfigurationService: ITextResourceConfigurationService,
 		@IInlineCompletionsService private readonly inlineCompletionsService: IInlineCompletionsService,
 		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
 		@IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
@@ -540,130 +520,6 @@ export class ChatStatusDashboard extends DomWidget {
 		update(quota);
 
 		return update;
-	}
-
-	private createSettings(container: HTMLElement, disposables: DisposableStore): HTMLElement {
-		const modeId = this.editorService.activeTextEditorLanguageId;
-		const settings = container.appendChild($('div.settings'));
-
-		// --- Inline Suggestions
-		{
-			const globalSetting = append(settings, $('div.setting'));
-			this.createInlineSuggestionsSetting(globalSetting, localize('settings.codeCompletions.allFiles', "All files"), '*', disposables);
-
-			if (modeId) {
-				const languageSetting = append(settings, $('div.setting'));
-				this.createInlineSuggestionsSetting(languageSetting, localize('settings.codeCompletions.language', "{0}", this.languageService.getLanguageName(modeId) ?? modeId), modeId, disposables);
-			}
-		}
-
-		// --- Next edit suggestions
-		{
-			const setting = append(settings, $('div.setting'));
-			this.createNextEditSuggestionsSetting(setting, localize('settings.nextEditSuggestions', "Next edit suggestions"), this.getCompletionsSettingAccessor(modeId), disposables);
-		}
-
-		return settings;
-	}
-
-	private createSetting(container: HTMLElement, settingIdsToReEvaluate: string[], label: string, accessor: ISettingsAccessor, disposables: DisposableStore): Checkbox {
-		const checkbox = disposables.add(new Checkbox(label, Boolean(accessor.readSetting()), { ...defaultCheckboxStyles }));
-		container.appendChild(checkbox.domNode);
-
-		const settingLabel = append(container, $('span.setting-label', undefined, label));
-		disposables.add(Gesture.addTarget(settingLabel));
-		[EventType.CLICK, TouchEventType.Tap].forEach(eventType => {
-			disposables.add(addDisposableListener(settingLabel, eventType, e => {
-				if (checkbox?.enabled) {
-					EventHelper.stop(e, true);
-
-					checkbox.checked = !checkbox.checked;
-					accessor.writeSetting(checkbox.checked);
-					checkbox.focus();
-				}
-			}));
-		});
-
-		disposables.add(checkbox.onChange(() => {
-			accessor.writeSetting(checkbox.checked);
-		}));
-
-		disposables.add(this.configurationService.onDidChangeConfiguration(e => {
-			if (settingIdsToReEvaluate.some(id => e.affectsConfiguration(id))) {
-				checkbox.checked = Boolean(accessor.readSetting());
-			}
-		}));
-
-		if (!this.canUseChat()) {
-			container.classList.add('disabled');
-			checkbox.disable();
-			checkbox.checked = false;
-		}
-
-		return checkbox;
-	}
-
-	private createInlineSuggestionsSetting(container: HTMLElement, label: string, modeId: string | undefined, disposables: DisposableStore): void {
-		this.createSetting(container, [defaultChat.completionsEnablementSetting], label, this.getCompletionsSettingAccessor(modeId), disposables);
-	}
-
-	private getCompletionsSettingAccessor(modeId = '*'): ISettingsAccessor {
-		const settingId = defaultChat.completionsEnablementSetting;
-
-		return {
-			readSetting: () => isCompletionsEnabled(this.configurationService, modeId),
-			writeSetting: (value: boolean) => {
-				this.telemetryService.publicLog2<ChatSettingChangedEvent, ChatSettingChangedClassification>('chatStatus.settingChanged', {
-					settingIdentifier: settingId,
-					settingMode: modeId,
-					settingEnablement: value ? 'enabled' : 'disabled'
-				});
-
-				let result = this.configurationService.getValue<Record<string, boolean>>(settingId);
-				if (!isObject(result)) {
-					result = Object.create(null);
-				}
-
-				return this.configurationService.updateValue(settingId, { ...result, [modeId]: value });
-			}
-		};
-	}
-
-	private createNextEditSuggestionsSetting(container: HTMLElement, label: string, completionsSettingAccessor: ISettingsAccessor, disposables: DisposableStore): void {
-		const nesSettingId = defaultChat.nextEditSuggestionsSetting;
-		const completionsSettingId = defaultChat.completionsEnablementSetting;
-		const resource = EditorResourceAccessor.getOriginalUri(this.editorService.activeEditor, { supportSideBySide: SideBySideEditor.PRIMARY });
-
-		const checkbox = this.createSetting(container, [nesSettingId, completionsSettingId], label, {
-			readSetting: () => completionsSettingAccessor.readSetting() && this.textResourceConfigurationService.getValue<boolean>(resource, nesSettingId),
-			writeSetting: (value: boolean) => {
-				this.telemetryService.publicLog2<ChatSettingChangedEvent, ChatSettingChangedClassification>('chatStatus.settingChanged', {
-					settingIdentifier: nesSettingId,
-					settingEnablement: value ? 'enabled' : 'disabled'
-				});
-
-				return this.textResourceConfigurationService.updateValue(resource, nesSettingId, value);
-			}
-		}, disposables);
-
-		// enablement of NES depends on completions setting
-		// so we have to update our checkbox state accordingly
-		if (!completionsSettingAccessor.readSetting()) {
-			container.classList.add('disabled');
-			checkbox.disable();
-		}
-
-		disposables.add(this.configurationService.onDidChangeConfiguration(e => {
-			if (e.affectsConfiguration(completionsSettingId)) {
-				if (completionsSettingAccessor.readSetting() && this.canUseChat()) {
-					checkbox.enable();
-					container.classList.remove('disabled');
-				} else {
-					checkbox.disable();
-					container.classList.add('disabled');
-				}
-			}
-		}));
 	}
 
 	private createCompletionsSnooze(container: HTMLElement, label: string, disposables: DisposableStore): void {
