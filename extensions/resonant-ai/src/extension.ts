@@ -83,7 +83,7 @@ function processServerAgentLoop(
 	workspaceRoot: string,
 	chatResponse: vscode.ChatResponseStream,
 	cancellationToken: vscode.CancellationToken,
-): Promise<{ loops: number; toolCalls: number; tokens: number; provider: string; model: string }> {
+): Promise<{ loops: number; toolCalls: number; tokens: number; provider: string; model: string; fallbackChain: Array<{ provider: string; model: string; attempt: number }> }> {
 	return new Promise((resolve, reject) => {
 		const url = new URL(`${apiUrl}/api/v1/ide/agent-stream`);
 		const payload = JSON.stringify(body);
@@ -103,6 +103,7 @@ function processServerAgentLoop(
 		}
 
 		let totalToolCalls = 0;
+		const fallbackChain: Array<{ provider: string; model: string; attempt: number }> = [];
 		let buffer = '';
 		let resolved = false;
 
@@ -273,10 +274,28 @@ function processServerAgentLoop(
 								break;
 							}
 
+							case 'fallback': {
+								const attempt = p.attempt || fallbackChain.length + 1;
+								fallbackChain.push({ provider: p.provider || '', model: p.model || '', attempt });
+								if (attempt === 1) {
+									chatResponse.progress(`Trying ${p.provider}/${p.model}...`);
+								} else {
+									chatResponse.progress(`Fallback #${attempt}: trying ${p.provider}/${p.model}...`);
+								}
+								break;
+							}
+
 							case 'tool_done':
 								break;
 
 							case 'stats':
+								if (Array.isArray(p.fallback_chain)) {
+									for (const fb of p.fallback_chain) {
+										if (!fallbackChain.some(e => e.provider === fb.provider && e.attempt === fb.attempt)) {
+											fallbackChain.push(fb);
+										}
+									}
+								}
 								if (!resolved) {
 									resolved = true;
 									resolve({
@@ -285,6 +304,7 @@ function processServerAgentLoop(
 										tokens: p.tokens || 0,
 										provider: p.provider || '',
 										model: p.model || '',
+										fallbackChain,
 									});
 								}
 								break;
@@ -292,7 +312,7 @@ function processServerAgentLoop(
 							case 'done':
 								if (!resolved) {
 									resolved = true;
-									resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '' });
+									resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '', fallbackChain });
 								}
 								break;
 
@@ -310,7 +330,7 @@ function processServerAgentLoop(
 			res.on('end', () => {
 				if (!resolved) {
 					resolved = true;
-					resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '' });
+					resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '', fallbackChain });
 				}
 			});
 			res.on('error', (err) => { if (!resolved) { resolved = true; reject(err); } });
@@ -319,7 +339,7 @@ function processServerAgentLoop(
 		req.on('error', (err) => { if (!resolved) { resolved = true; reject(err); } });
 		cancellationToken.onCancellationRequested(() => {
 			req.destroy();
-			if (!resolved) { resolved = true; resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '' }); }
+			if (!resolved) { resolved = true; resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '', fallbackChain }); }
 		});
 		req.write(payload);
 		req.end();
@@ -490,7 +510,29 @@ export function activate(context: vscode.ExtensionContext) {
 				const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 				const tokenStr = totalTokens > 0 ? ` · ${totalTokens.toLocaleString()} tokens` : '';
 				const providerStr = lastProvider ? ` · ${lastProvider}${lastModel ? '/' + lastModel : ''}` : '';
+				const preferredStr = `${providerKey}/${modelName}`;
+				const actualStr = lastProvider ? `${lastProvider}${lastModel ? '/' + lastModel : ''}` : '';
+				const fbChain = stats.fallbackChain || [];
 				response.markdown(`\n\n---\n*🔧 ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''} · ${loops} loop${loops > 1 ? 's' : ''}${tokenStr} · ${elapsed}s${providerStr}*\n`);
+				if (fbChain.length > 0) {
+					// Deduplicate chain by provider (show unique providers tried)
+					const seen = new Set<string>();
+					const uniqueProviders: string[] = [];
+					for (const fb of fbChain) {
+						if (!seen.has(fb.provider)) {
+							seen.add(fb.provider);
+							uniqueProviders.push(fb.provider);
+						}
+					}
+					const chainStr = uniqueProviders.map(p =>
+						p === lastProvider ? `**${p}** ✓` : `~~${p}~~ ✗`
+					).join(' → ');
+					const wasPreferred = lastProvider === providerKey;
+					const prefLabel = wasPreferred ? '' : ` · preferred: ${preferredStr}`;
+					response.markdown(`*⚡ Provider chain: ${chainStr}${prefLabel}*\n`);
+				} else if (actualStr && actualStr !== preferredStr) {
+					response.markdown(`*⚡ Preferred: ${preferredStr} · Used: ${actualStr}*\n`);
+				}
 
 				if (loops >= maxLoops) {
 					response.markdown(`\n\n*⚠️ Reached max loops (${maxLoops})*\n`);
