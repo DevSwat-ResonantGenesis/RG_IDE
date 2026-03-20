@@ -215,7 +215,7 @@ Your identity is cryptographically bound to the Ethereum Base Sepolia L2 blockch
 ## Getting Started
 
 ### Prerequisites
-- **Node.js** 22.x or later (22.22.0 recommended — see `.nvmrc`)
+- **Node.js 22.x** (22.22.0 recommended — see `.nvmrc`). **Do NOT use Node 23+ or 25+** — native modules (`tree-sitter`) fail to compile against newer V8 headers. If you have a newer Node installed, use `brew install node@22` and prefix commands with `PATH="/opt/homebrew/opt/node@22/bin:$PATH"`.
 - **npm** 10.x or later
 - **Python** 3.10+ (for native module compilation and SAST analysis)
 - **Xcode Command Line Tools** (macOS) or **build-essential** (Linux) — required for native modules
