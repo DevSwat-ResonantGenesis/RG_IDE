@@ -1,0 +1,178 @@
+name: Build Resonant IDE Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Target platform'
+        required: true
+        default: 'darwin-arm64'
+        type: choice
+        options:
+          - darwin-arm64
+          - darwin-x64
+          - linux-x64
+          - win32-x64
+
+env:
+  NODE_VERSION: '22.22.0'
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-14  # M1/M2 runner with Xcode pre-installed
+    if: github.event_name == 'push' || github.event.inputs.platform == 'darwin-arm64'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build icon asset catalog (.car)
+        run: |
+          xcrun actool --compile resources/darwin \
+            --platform macosx \
+            --minimum-deployment-target 10.15 \
+            --app-icon AppIcon \
+            --output-partial-info-plist /dev/null \
+            resources/darwin/AppIcon.xcassets
+          [ -f resources/darwin/Assets.car ] && mv resources/darwin/Assets.car resources/darwin/code.car
+
+      - name: Compile TypeScript
+        run: npm run gulp compile
+
+      - name: Build production .app (darwin-arm64-min)
+        run: npx gulp vscode-darwin-arm64-min
+
+      - name: Verify build output
+        run: |
+          ls -la ../VSCode-darwin-arm64/
+          APP_NAME=$(ls ../VSCode-darwin-arm64/ | grep ".app$" | head -1)
+          echo "Built: $APP_NAME"
+          du -sh "../VSCode-darwin-arm64/$APP_NAME"
+
+      - name: Create DMG
+        run: |
+          APP_PATH="../VSCode-darwin-arm64/$(ls ../VSCode-darwin-arm64/ | grep '.app$' | head -1)"
+          hdiutil create -volname "Resonant IDE" -srcfolder "$APP_PATH" -ov -format UDZO "../ResonantIDE-arm64.dmg"
+
+      - name: Upload .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ResonantIDE-darwin-arm64
+          path: ../VSCode-darwin-arm64/*.app
+          retention-days: 30
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ResonantIDE-darwin-arm64-dmg
+          path: ../ResonantIDE-arm64.dmg
+          retention-days: 30
+
+      - name: Upload to release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ../ResonantIDE-arm64.dmg
+          draft: false
+          prerelease: false
+
+  build-macos-x64:
+    runs-on: macos-13  # Intel runner
+    if: github.event_name == 'push' || github.event.inputs.platform == 'darwin-x64'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build icon asset catalog (.car)
+        run: |
+          xcrun actool --compile resources/darwin \
+            --platform macosx \
+            --minimum-deployment-target 10.15 \
+            --app-icon AppIcon \
+            --output-partial-info-plist /dev/null \
+            resources/darwin/AppIcon.xcassets
+          [ -f resources/darwin/Assets.car ] && mv resources/darwin/Assets.car resources/darwin/code.car
+
+      - name: Compile & Build production .app (darwin-x64-min)
+        run: |
+          npm run gulp compile
+          npx gulp vscode-darwin-x64-min
+
+      - name: Create DMG
+        run: |
+          APP_PATH="../VSCode-darwin-x64/$(ls ../VSCode-darwin-x64/ | grep '.app$' | head -1)"
+          hdiutil create -volname "Resonant IDE" -srcfolder "$APP_PATH" -ov -format UDZO "../ResonantIDE-x64.dmg"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ResonantIDE-darwin-x64-dmg
+          path: ../ResonantIDE-x64.dmg
+          retention-days: 30
+
+      - name: Upload to release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ../ResonantIDE-x64.dmg
+
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.platform == 'linux-x64'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev rpm fakeroot
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile & Build production (linux-x64-min)
+        run: |
+          npm run gulp compile
+          npx gulp vscode-linux-x64-min
+
+      - name: Create .tar.gz
+        run: |
+          cd ..
+          tar -czf ResonantIDE-linux-x64.tar.gz VSCode-linux-x64/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ResonantIDE-linux-x64
+          path: ../ResonantIDE-linux-x64.tar.gz
+          retention-days: 30
+
+      - name: Upload to release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ../ResonantIDE-linux-x64.tar.gz

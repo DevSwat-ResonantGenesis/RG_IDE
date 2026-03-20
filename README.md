@@ -1,368 +1,370 @@
+<div align="center">
+
 # Resonant IDE
 
-**The open-source AI-native code editor by [Resonant Genesis](https://dev-swat.com)**
+### The AI-Native Development Environment by Resonant Genesis
 
-Resonant IDE is a full VS Code fork with a built-in autonomous coding agent. It connects to the Resonant Genesis platform for cloud-powered AI assistance, or runs fully offline with a local LLM via Ollama.
+**Built entirely by AI, orchestrated by [Louie Nemesh](https://dev-swat.com)**
 
-> **Thin-client architecture:** All orchestration intelligence (system prompts, tool definitions, tool selection, retry logic) lives server-side in [`RG_Axtention_IDE`](https://github.com/DevSwat-ResonantGenesis/RG_Axtention_IDE). The IDE itself is a lightweight client that renders UI and executes tools locally on your machine. No proprietary logic is exposed in the client.
+[![License: RG Source Available](https://img.shields.io/badge/License-RG%20Source%20Available-blue.svg)](LICENSE.txt)
+[![Platform](https://img.shields.io/badge/Platform-dev--swat.com-purple.svg)](https://dev-swat.com)
+
+[Manual Install](#getting-started) · [Documentation](https://dev-swat.com/docs) · [Platform](https://dev-swat.com) · [Report Issue](https://dev-swat.com/feedback)
+
+</div>
+
+---
+
+## What is Resonant IDE?
+
+**Resonant IDE** is a full-featured AI-native code editor built on the VS Code Open Source foundation, deeply integrated with the **Resonant Genesis** AI governance platform. Unlike traditional editors that bolt on AI as an afterthought, Resonant IDE was designed from the ground up with AI at its core — every feature, every tool, every workflow is AI-first.
+
+This is not a wrapper. This is not a plugin. This is a **complete development environment** where the AI assistant has the same capabilities as you: it reads your files, runs your commands, searches your codebase, manages your git, edits your notebooks, browses the web, and deploys your code — all through a governed, auditable, identity-bound execution pipeline.
+
+### Screenshots
+
+<div align="center">
+
+**AI Chat + Editor + Terminal — Unified Workspace**
+
+![Resonant IDE Interface](docs/screenshots/interface.png)
+
+**11 AI Providers with BYOK (Bring Your Own Key)**
+
+![AI Providers & BYOK Settings](docs/screenshots/ai-providers.png)
+
+**Configurable Max Tool Loops — Up to Unlimited**
+
+![Settings — Max Tool Loops](docs/screenshots/settings-loops.png)
+
+</div>
+
+### Key Differentiators
+
+| Feature | Resonant IDE | Traditional Editors | AI Wrappers |
+|---------|-------------|-------------------|-------------|
+| **Native AI Agent** | Built-in agentic loop with 59+ tools | Separate extension/plugin | Chat-only, no tools |
+| **Local + Cloud AI** | Ollama, LM Studio, OpenAI, Anthropic, Groq | Cloud-only or local-only | Single provider |
+| **SAST & Architecture** | AST analysis, dependency graphs, SAST, full-stack mapping | Basic search | No analysis |
+| **Platform Identity** | DSID (Decentralized Semantic ID) per user | Username/password | API key |
+| **Memory System** | Hash Sphere persistent memory across sessions | No memory | Chat history only |
+| **Tool Execution** | 59 local tools + 433 platform API endpoints | Limited extensions | Sandboxed/limited |
+| **Governed Execution** | Pre-execution policies, trust tiers, audit trails | No governance | No governance |
 
 ---
 
 ## Architecture
 
 ```
-Your Machine (Resonant IDE)                 Resonant Genesis Cloud
-┌─────────────────────────────┐            ┌──────────────────────────────┐
-│  Thin client:               │ SSE stream │  ide_agent_service:          │
-│  - Full VS Code editor      │◄──────────│  - System prompt             │
-│  - Chat panel (built-in)    │            │  - Tool definitions          │
-│  - Local tool executor      │            │  - Tool selection logic      │
-│  - Inline completions       │────────────►  - LLM calls (6 providers)  │
-│  - LOC tracking             │ tool results│  - BYOK key resolution      │
-│  - Profile / settings UI    │            │  - Message history           │
-│                             │            │  - Credit deduction          │
-│  NO orchestration code      │            └──────────────────────────────┘
-│  NO tool definitions        │
-│  NO system prompts          │            ┌──────────────────────────────┐
-│  Login required for cloud   │            │  OR: Local LLM (Ollama)     │
-│  Ollama works without login │            │  - Fully offline             │
-└─────────────────────────────┘            │  - No account needed         │
-                                           │  - Free, unlimited           │
-                                           └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Resonant IDE (Electron)                │
+│                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │  VS Code Core │  │ Resonant AI  │  │  Extensions   │  │
+│  │  (Editor,     │  │  Extension   │  │  Marketplace  │  │
+│  │   Terminal,   │  │  (Built-in)  │  │  (Open VSX)   │  │
+│  │   Debug, Git) │  │              │  │               │  │
+│  └──────────────┘  └──────┬───────┘  └───────────────┘  │
+│                           │                              │
+│  ┌────────────────────────┼────────────────────────────┐ │
+│  │           Resonant AI Extension Core                │ │
+│  │                                                     │ │
+│  │  ┌─────────────┐ ┌──────────────┐ ┌──────────────┐ │ │
+│  │  │ LLM Provider │ │ Tool Engine  │ │ Auth Service │ │ │
+│  │  │ (Multi-model)│ │ (59 tools)   │ │ (DSID/JWT)   │ │ │
+│  │  └──────┬──────┘ └──────┬───────┘ └──────┬───────┘ │ │
+│  │         │               │                │          │ │
+│  │  ┌──────┴──────┐ ┌──────┴───────┐ ┌──────┴───────┐ │ │
+│  │  │ Local LLM   │ │ SAST &       │ │ Memory &     │ │ │
+│  │  │ (Ollama)    │ │ Architecture │ │ Hash Sphere  │ │ │
+│  │  └─────────────┘ └──────────────┘ └──────────────┘ │ │
+│  └─────────────────────────────────────────────────────┘ │
+│                           │                              │
+└───────────────────────────┼──────────────────────────────┘
+                            │ HTTPS/WSS
+                            ▼
+              ┌──────────────────────────┐
+              │  Resonant Genesis Cloud   │
+              │  (30+ microservices)      │
+              │                           │
+              │  Gateway → Auth → Chat    │
+              │  Agents → Memory → Billing│
+              │  Blockchain → Marketplace │
+              └──────────────────────────┘
 ```
+
+### Extension Source Files (`extensions/resonant-ai/src/`)
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `extension.ts` | Main entry point — agentic loop, tool dispatch, auth wiring | ~1,400 |
+| `toolExecutor.ts` | All 59 tool implementations — file I/O, git, web, deploy, etc. | ~2,300 |
+| `toolDefinitions.ts` | Tool schemas organized by category with smart filtering | ~900 |
+| `languageModelProvider.ts` | Multi-provider LLM routing (cloud + local) | ~600 |
+| `localLLMProvider.ts` | Ollama/LM Studio/llama.cpp local model support | ~300 |
+| `chatViewProvider.ts` | Sidebar webview chat UI with streaming | ~900 |
+| `authProvider.ts` | VS Code AuthenticationProvider for Resonant Genesis | ~180 |
+| `authService.ts` | Token management, refresh, DSID binding | ~280 |
+| `interactiveTerminal.ts` | Persistent terminal sessions with I/O capture | ~300 |
+| `inlineCompletionProvider.ts` | Ghost text code completions (FIM) | ~190 |
+| `locTracker.ts` | Lines-of-code tracking per session | ~160 |
+| `updateChecker.ts` | Auto-update system with release notes | ~160 |
+| `settingsPanel.ts` | Full settings webview panel | ~700 |
+| `profileWebview.ts` | User profile and account management | ~250 |
+| `agentProvider.ts` | VS Code Chat Participant integration | ~190 |
 
 ---
 
-## Features
+## 59 Built-in Tools (11 Categories)
 
-### AI Chat Agent
-- **Autonomous coding agent** in the built-in Chat panel — reads, writes, edits, searches, and runs commands
-- **Server-side agentic loop** — the server decides which tools to call, the IDE executes them locally
-- **Multi-loop execution** — up to 15 loops per request (configurable, or unlimited with `0`)
-- **Rich tool UI** — shows diffs, command output, file operations inline in chat
-- **Session metrics** — tool calls, loops, tokens, elapsed time, LOC written/edited
+### Core (12 tools)
+`file_read` · `file_write` · `file_edit` · `multi_edit` · `file_list` · `file_delete` · `file_move` · `grep_search` · `find_by_name` · `run_command` · `command_status` · `read_terminal`
 
-### Inline Completions (Ghost Text)
-- Copilot-style code completions as you type
-- Uses the same LLM provider selected in the model picker
-- Toggle on/off via command palette: `Resonant AI: Toggle Inline Completions`
+### Git (7 tools)
+`git_status` · `git_diff` · `git_log` · `git_commit` · `git_push` · `git_pull` · `git_branch`
 
-### Multi-Provider LLM Support
-Choose your provider from the VS Code model picker:
+### Web (6 tools)
+`search_web` · `read_url_content` · `view_content_chunk` · `browser_check` · `browser_preview` · `read_browser_logs`
 
-| Provider | Models | Notes |
-|----------|--------|-------|
-| **Groq** | Llama 3.3 70B, Mixtral, Gemma 2 | Default — fastest inference |
-| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3-mini | Best for complex reasoning |
-| **Anthropic** | Claude Sonnet 4, Claude Haiku | Best for code generation |
-| **Google** | Gemini 2.0 Flash, Gemini Pro | Lowest credit cost |
-| **DeepSeek** | DeepSeek Chat, DeepSeek Coder | Strong code model |
-| **Mistral** | Mistral Large, Codestral | European provider |
-| **Ollama** (local) | Any model you pull | Free, fully offline |
+### Codebase Intelligence (8 tools)
+`code_visualizer_scan` · `code_visualizer_functions` · `code_visualizer_trace` · `code_visualizer_governance` · `code_visualizer_graph` · `code_visualizer_pipeline` · `code_visualizer_filter` · `code_visualizer_by_type`
 
-### Bring Your Own Key (BYOK)
-- Add your own API keys on the [platform dashboard](https://dev-swat.com/settings) under **API Keys**
-- When BYOK keys are set, the platform uses YOUR key — **zero credit cost**
-- Supports: OpenAI, Anthropic, Groq, Google, DeepSeek, Mistral
+### Interactive Terminal (8 tools)
+`terminal_create` · `terminal_send` · `terminal_send_raw` · `terminal_read` · `terminal_wait` · `terminal_list` · `terminal_close` · `terminal_clear`
 
-### Local LLM (Ollama)
-Run AI completely offline with no account required:
-1. Install [Ollama](https://ollama.com)
-2. Pull a model: `ollama pull llama3.1:8b`
-3. Start Ollama: `ollama serve`
-4. In Resonant IDE: Settings → search `resonant.localLLM.enabled` → enable
-5. Select a local model from the Chat model picker
+### Planning & Memory (6 tools)
+`todo_list` · `ask_user` · `save_memory` · `read_memory` · `create_memory` · `code_search`
 
-**Local LLM features:**
-- Full agentic loop runs locally (no server needed)
-- All tools available: file read/write/edit, search, terminal, etc.
-- Configurable context length (default: 32K tokens)
-- Custom Ollama URL if running on a different host
+### Notebooks (2 tools)
+`notebook_read` · `notebook_edit`
 
-### User Agents
-- Create custom AI agents on the platform with specialized system prompts
-- Agents appear as chat participants in the IDE
-- Each agent can have its own tools, personality, and constraints
+### Platform API (2 tools)
+`platform_api_search` · `platform_api_call` — access to **433 backend endpoints** across 17 services
+
+### Deploy (2 tools)
+`droplet_ssh_command` · `droplet_docker_status`
+
+### Trajectory (1 tool)
+`trajectory_search` — semantic search over conversation history
+
+### Inline Completions
+Real-time ghost text code suggestions via FIM (Fill-in-the-Middle) across 30+ languages.
 
 ---
 
-## Credit System
+## Supported AI Providers
 
-Resonant IDE uses a credit-based billing system. **1 credit ≈ $0.001** (1,000 credits = $1).
+### Cloud Providers (via Resonant Genesis Platform)
+- **OpenAI** — GPT-4o, GPT-4o-mini
+- **Anthropic** — Claude 3.5 Sonnet, Claude 3 Opus
+- **Groq** — Llama 3.3 70B (ultra-fast inference)
+- **Google** — Gemini Pro, Gemini Flash
+- **BYOK** — Bring Your Own Key for any provider
 
-### Free Tier
-Every new account receives **1,000 free credits** — enough for ~50 chat messages or ~10 agentic coding sessions.
+### Local Providers (Zero Internet Required)
+- **Ollama** — Any model (llama3.1, codellama, deepseek-coder, qwen2.5-coder, etc.)
+- **LM Studio** — OpenAI-compatible API
+- **llama.cpp** — Direct server connection
+- **LocalAI** — Multi-model local server
+- **vLLM** — High-performance local inference
 
-### How Credits Are Deducted
-
-Credits are deducted **per LLM call** based on actual token usage:
-
-| Cost Component | Rate |
-|----------------|------|
-| **Input tokens** | 10 credits per 1K tokens |
-| **Output tokens** | 30 credits per 1K tokens |
-| **Minimum per request** | 1 credit |
-
-**Provider multipliers** (applied to token costs):
-
-| Provider | Multiplier | Effective cost |
-|----------|-----------|----------------|
-| Google / Gemini | 0.8x | Cheapest cloud option |
-| Groq | 0.5x | Budget-friendly, fast |
-| OpenAI | 1.0x | Standard rate |
-| Anthropic | 1.2x | Premium for Claude |
-| Local (Ollama) | 0.1x | Near-zero (only if routed through platform) |
-| **BYOK** | **0x** | **Free — your own key** |
-
-**Agent execution costs:**
-
-| Action | Credits |
-|--------|---------|
-| Agent session start | 100 |
-| Each agent step/loop | 500 |
-| Tool invocation | 200 |
-| Web search call | 300 |
-| Memory write | 50 |
-
-**Typical session costs:**
-- Simple Q&A (1 loop, ~2K tokens): **~5-20 credits**
-- Code edit task (3-5 loops, ~8K tokens): **~50-150 credits**
-- Complex refactor (10+ loops, ~20K tokens): **~200-500 credits**
-
-### Plans
-
-| Plan | Price | Included Credits | Key Limits |
-|------|-------|-----------------|------------|
-| **Developer** (free) | $0/mo | 1,000 | 3 agents, 100 msg/day |
-| **Plus** | $4.99/mo | 499,000 | 20 agents, autonomous mode, rollover |
-| **Enterprise** | Custom | Unlimited | Unlimited everything |
-
-### Credit Packs (Top-ups)
-
-| Pack | Credits | Price | Per 1K |
-|------|---------|-------|--------|
-| Starter | 5,000 | $5 | $1.00 |
-| Basic | 10,000 | $8 | $0.80 |
-| Growth | 50,000 | $35 | $0.70 |
-| Scale | 100,000 | $60 | $0.60 |
-| Enterprise | 500,000 | $250 | $0.50 |
+### Provider Selection
+The AI automatically selects the best available provider, or you can manually choose via the model picker. BYOK users get priority routing to their preferred provider.
 
 ---
 
-## Installation
+## SAST, Dependency Analysis & Full-Stack Architecture Engine
 
-### Download Pre-built (Recommended)
-1. Download the latest `.dmg` (macOS) from [Releases](https://github.com/DevSwat-ResonantGenesis/RG_IDE/releases)
-2. Drag **Resonant IDE** to Applications
-3. Open Resonant IDE
-4. Sign in via command palette: `Resonant AI: Sign In`
+The built-in analysis engine performs deep static analysis locally — **no code leaves your machine**:
 
-### Build from Source
+- **SAST (Static Application Security Testing)** — Security vulnerability scanning, forbidden dependency checks, architecture drift scoring (0-100)
+- **AST Parsing** — Full abstract syntax tree analysis for Python, JavaScript, TypeScript
+- **Dependency Graphs** — Import chains, call graphs, service-to-service dependency mapping
+- **Full-Stack Architecture Mapping** — Auto-discovers microservice boundaries, API routes, data flows, and inter-service communication patterns
+- **Dead Code Detection** — Unreachable functions, unused imports, orphaned files
+- **Pipeline Auto-Detection** — Discovers user_registration, login, chat_flow, billing, agent_execution pipelines across the full stack
+- **Governance Enforcement** — Policy validation, trust-tier compliance, execution boundary checks
+- **Multi-Repo Comparison** — Cross-repository analysis and change detection
+- **Graph Janitor** — Health scoring with actionable remediation suggestions
 
-**Prerequisites:**
-- Node.js 18+
-- Python 3.10+ (for native module builds)
-- Git
-- macOS, Linux, or Windows
+---
 
-```bash
-# Clone the repo
-git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git
-cd RG_IDE
+## Memory & Identity
 
-# Install dependencies
-npm install
+### Hash Sphere Memory
+Every conversation, every code change, every decision is optionally stored in the **Hash Sphere** — a deterministic hashing system that maps content to 3D coordinates for semantic retrieval. Memories persist across sessions and sync to the cloud when authenticated.
 
-# Build
-npm run compile
-
-# Run in development mode
-./scripts/code.sh
-```
-
-For a production build:
-```bash
-npm run gulp vscode-darwin-arm64  # macOS Apple Silicon
-npm run gulp vscode-darwin-x64    # macOS Intel
-npm run gulp vscode-linux-x64     # Linux
-npm run gulp vscode-win32-x64     # Windows
-```
+### Decentralized Semantic Identity (DSID)
+Your identity is cryptographically bound to the Ethereum Base Sepolia L2 blockchain. Every action in the IDE is traceable to your verified identity, creating an immutable audit trail of your development activity.
 
 ---
 
 ## Getting Started
 
-### 1. Sign In
-- Open command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-- Run `Resonant AI: Sign In`
-- Or click the Resonant AI status bar icon
+### Prerequisites
+- **Node.js** 22.x or later (22.22.0 recommended — see `.nvmrc`)
+- **npm** 10.x or later
+- **Python** 3.10+ (for native module compilation and SAST analysis)
+- **Xcode Command Line Tools** (macOS) or **build-essential** (Linux) — required for native modules
+- A free account at [dev-swat.com](https://dev-swat.com) (required for AI features)
 
-### 2. Register an Account
-- Visit [dev-swat.com/signup](https://dev-swat.com/signup)
-- Sign up with email or GitHub OAuth
-- Your 1,000 free credits are available immediately
-
-### 3. Start Coding with AI
-- Open a project folder (`File → Open Folder`)
-- Open the Chat panel (`Cmd+Shift+I` or click the chat icon)
-- Select a model from the picker dropdown
-- Ask the AI to do anything: edit files, search code, run commands, debug
-
-### 4. Set Up BYOK (Optional)
-- Go to [dev-swat.com/settings](https://dev-swat.com/settings) → **API Keys**
-- Add your OpenAI, Anthropic, or Groq key
-- The IDE will automatically use your key — no credits deducted
-
-### 5. Set Up Local LLM (Optional)
-- Install Ollama: `brew install ollama` (macOS) or [ollama.com](https://ollama.com)
-- Pull a model: `ollama pull llama3.1:8b` (or `qwen2.5-coder:14b` for coding)
-- In IDE settings, enable `resonant.localLLM.enabled`
-- No account needed — fully offline
-
----
-
-## Available Tools
-
-When the AI agent runs, it can use these tools (executed locally on your machine):
-
-| Tool | Description |
-|------|-------------|
-| `file_read` | Read file contents (with line range) |
-| `file_write` | Create or overwrite files |
-| `file_edit` | Find-and-replace edits in files |
-| `multi_edit` | Multiple edits in one file atomically |
-| `file_list` | List directory contents |
-| `file_delete` | Delete files |
-| `file_move` | Move/rename files |
-| `grep_search` | Regex search across files (ripgrep) |
-| `find_by_name` | Find files by name pattern |
-| `code_search` | Semantic code search |
-| `run_command` | Execute shell commands |
-| `search_web` | Search the web |
-| `ssh_run` | Run commands on remote servers |
-| `terminal_*` | Interactive terminal sessions |
-| `code_visualizer_*` | Codebase analysis and visualization |
-
----
-
-## Settings
-
-All settings are under the `resonant` namespace in VS Code settings:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `resonant.apiUrl` | `https://dev-swat.com` | Platform API URL |
-| `resonant.maxToolLoops` | `15` | Max agentic loops per request (0 = unlimited) |
-| `resonant.inlineCompletions` | `true` | Enable ghost-text completions |
-| `resonant.localLLM.enabled` | `false` | Enable Ollama local LLM |
-| `resonant.localLLM.url` | `http://localhost:11434` | Ollama server URL |
-| `resonant.localLLM.model` | `llama3.1:8b` | Default local model |
-| `resonant.localLLM.contextLength` | `32768` | Context window size |
-
----
-
-## Commands
-
-Available from the command palette (`Cmd+Shift+P`):
-
-| Command | Description |
-|---------|-------------|
-| `Resonant AI: Sign In` | Authenticate with the platform |
-| `Resonant AI: Sign Out` | Log out |
-| `Resonant AI: Set API Key` | Manually enter JWT or API key |
-| `Resonant AI: Open Chat` | Open the AI chat panel |
-| `Resonant AI: New Conversation` | Start a fresh chat |
-| `Resonant AI: Open Profile` | View account info and usage |
-| `Resonant AI: Open Settings` | Open the Resonant settings panel |
-| `Resonant AI: Refresh Providers` | Re-fetch available models and agents |
-| `Resonant AI: Toggle Inline Completions` | Turn ghost-text on/off |
-| `Resonant AI: Test Local Connection` | Test Ollama connectivity |
-| `Resonant AI: List Local Models` | Browse and select Ollama models |
-| `Resonant AI: Toggle Local LLM` | Enable/disable local LLM mode |
-
----
-
-## Contributing
-
-We welcome contributions! Resonant IDE is based on VS Code (MIT License) with the Resonant AI extension.
-
-### Development Setup
+### Build from Source
 
 ```bash
 # Clone
 git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git
 cd RG_IDE
 
-# Install all dependencies
+# Install dependencies (takes 2-5 minutes)
 npm install
 
-# Build the extension
-cd extensions/resonant-ai
-npm install
+# Build the Resonant AI extension
+cd extensions/resonant-ai && npm install && npx tsc -p tsconfig.json && cd ../..
+
+# Compile the full IDE (takes ~2 minutes)
 npm run compile
-cd ../..
 
-# Launch in dev mode
+# Launch Resonant IDE
 ./scripts/code.sh
 ```
 
-### Project Structure
+The `scripts/code.sh` launcher will:
+1. Download the correct Electron binary (first run only)
+2. Verify compilation output exists
+3. Sync built-in extensions
+4. Launch the IDE
 
+### Troubleshooting
+
+**"Cannot find module out/main.js"**
+The TypeScript compilation didn't run or failed. Fix:
+```bash
+rm -rf out
+npm run compile
+./scripts/code.sh
 ```
-RG_IDE/
-├── extensions/
-│   └── resonant-ai/          # The AI extension
-│       └── src/
-│           └── extension.ts   # Main entry point (thin client)
-├── src/                       # VS Code core source
-├── build/                     # Build scripts
-├── resources/                 # App icons, branding
-├── cli/                       # CLI tooling
-└── scripts/
-    └── code.sh                # Dev launch script
+
+**Compilation fails with errors**
+Ensure you have the correct Node.js version:
+```bash
+node --version  # Should be v22.x
 ```
 
-### Key Files
-- **`extensions/resonant-ai/src/extension.ts`** — Main extension: registers chat participant, handles SSE agent loop, local LLM loop, tool execution, UI rendering
-- **`extensions/resonant-ai/src/toolExecutor.ts`** — Local tool implementations (file ops, grep, terminal)
-- **`extensions/resonant-ai/src/localLLMProvider.ts`** — Ollama integration
-- **`extensions/resonant-ai/src/languageModelProvider.ts`** — VS Code Language Model Provider (model picker)
-- **`extensions/resonant-ai/src/authService.ts`** — Authentication and token management
-- **`extensions/resonant-ai/src/inlineCompletionProvider.ts`** — Ghost-text inline completions
-- **`extensions/resonant-ai/src/locTracker.ts`** — Lines-of-code tracking per session
+**npm warnings about "Unknown project config"**
+These are cosmetic warnings from npm 10+/11+ about `.npmrc` keys (`disturl`, `target`, `runtime`, etc.). These keys are **required** by the build system — do not remove them. The warnings are harmless and do not affect the build.
 
-### Coding Guidelines
-- The extension is a **thin client** — no orchestration logic, no system prompts, no tool definitions
-- All cloud intelligence lives in [RG_Axtention_IDE](https://github.com/DevSwat-ResonantGenesis/RG_Axtention_IDE) (server-side)
-- Local LLM path is the only exception — it runs a full local agentic loop with tool definitions
-- Use TypeScript strict mode
-- Follow existing code style (no semicolons optional — match the file you're editing)
+**Native module build failures**
+Ensure you have C++ build tools installed:
+```bash
+# macOS
+xcode-select --install
 
-### Submitting Changes
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes
-4. Test locally: `./scripts/code.sh`
-5. Commit with a descriptive message: `git commit -m "feat: add X"`
-6. Push and open a Pull Request
+# Ubuntu/Debian
+sudo apt install build-essential python3
+```
+
+> **Note:** Resonant IDE is currently available as a manual build from source. Pre-built binaries (.dmg, .AppImage, .exe) are coming soon. A registered account at [dev-swat.com](https://dev-swat.com/signup) is required to use the AI assistant and platform features.
 
 ---
 
-## Related Repositories
+## Platform Integration
 
-| Repo | Description |
-|------|-------------|
-| [RG_Axtention_IDE](https://github.com/DevSwat-ResonantGenesis/RG_Axtention_IDE) | Server-side agentic orchestration (Python/FastAPI) |
-| [RG_IDE_Platform](https://github.com/DevSwat-ResonantGenesis/RG_IDE_Platform) | IDE platform services (LSP, terminal, preview) |
-| [RG_Gateway](https://github.com/DevSwat-ResonantGenesis/RG_Gateway) | API gateway routing |
-| [RG_Auth](https://github.com/DevSwat-ResonantGenesis/RG_Auth) | Authentication service |
-| [RG_Billing](https://github.com/DevSwat-ResonantGenesis/RG_Billing) | Credit system and billing |
+Resonant IDE connects to the **Resonant Genesis** platform — a governed execution system for AI agents with 30+ microservices:
+
+| Service | What It Does |
+|---------|-------------|
+| **Gateway** | API routing, auth verification, rate limiting |
+| **Auth Service** | JWT tokens, OAuth2, 2FA, DSID binding |
+| **Chat Service** | Multi-provider AI routing, skills, streaming |
+| **Agent Engine** | Autonomous agent execution, planning, tools |
+| **Memory Service** | Hash Sphere storage, semantic retrieval |
+| **Blockchain Node** | Base Sepolia identity registry, memory anchors |
+| **SAST & Architecture Engine** | AST analysis, SAST, dependency mapping, pipeline detection |
+| **Billing Service** | Credits, Stripe, usage tracking |
+| **Marketplace** | Agent templates, extensions, publishing |
+| **IDE Service** | LOC tracking, updates, analytics |
+
+### 433 Platform API Endpoints
+
+The `platform_api_search` and `platform_api_call` tools give the AI direct access to the entire platform API — create agents, manage teams, query memories, interact with blockchain, publish to marketplace, and more.
+
+---
+
+## Contributing
+
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting pull requests.
+
+### How to Contribute
+
+1. **Fork** this repository
+2. **Create** a feature branch: `git checkout -b feature/my-feature`
+3. **Make** your changes
+4. **Test** locally: build and run the IDE
+5. **Submit** a pull request
+
+### Contribution Areas
+
+- **AI Tools** — Add new tools in `extensions/resonant-ai/src/toolDefinitions.ts` and `toolExecutor.ts`
+- **Language Support** — Improve inline completions for specific languages
+- **Local LLM** — Add support for new local inference servers
+- **SAST & Architecture** — Extend analysis to new languages, add security rules
+- **UI/UX** — Improve the chat interface, settings panel, profile page
+- **Documentation** — Improve docs, add tutorials, fix typos
+
+---
+
+## About the Creator
+
+**Resonant IDE** and the entire **Resonant Genesis** platform were built by **Louie Nemesh** — an AI architect who started this project on **November 11, 2025** with a singular vision: to build the world's most comprehensive AI governance platform.
+
+**Every single line of code was written by AI**, orchestrated and directed by Louie as the sole human architect. No team of developers. No outsourced contractors. One person directing AI to build an enterprise-grade platform with 30+ microservices, blockchain integration, a full IDE, and a marketplace — proving that the future of software development is human-AI collaboration at its finest.
+
+> *"I didn't write a single line of code myself. I architected, I directed, I made every decision — but the code was written by AI. This is what the future looks like."*
+> — Louie Nemesh, Founder & AI Architect
+
+### The Numbers
+
+- **30+** production microservices
+- **433** API endpoints
+- **137** AI tools across the platform
+- **59** local IDE tools
+- **53** React UI components
+- **4** AI providers (OpenAI, Anthropic, Groq, Google)
+- **3** smart contracts on Base Sepolia (Ethereum L2)
+- **1** human architect
+- **0** lines of human-written code
+
+---
+
+## Links
+
+- **Platform**: [dev-swat.com](https://dev-swat.com)
+- **AI Portal**: [resonantgenesis.ai](https://resonantgenesis.ai)
+- **GitHub**: [github.com/DevSwat-ResonantGenesis](https://github.com/DevSwat-ResonantGenesis)
+- **Feedback**: [dev-swat.com/feedback](https://dev-swat.com/feedback)
+- **Documentation**: [dev-swat.com/docs](https://dev-swat.com/docs)
 
 ---
 
 ## License
 
-Resonant IDE is based on [VS Code](https://github.com/microsoft/vscode) (MIT License).
-The Resonant AI extension and platform integration are proprietary to Resonant Genesis.
+Copyright (c) 2025-2026 Resonant Genesis / DevSwat. Founded and built by Louie Nemesh.
 
-See [LICENSE](LICENSE) for details.
+Licensed under the [Resonant Genesis Source Available License](LICENSE.txt).
+
+- **View & study**: Free for everyone
+- **Download & use**: Free with [platform registration](https://dev-swat.com/signup)
+- **Contribute**: Pull requests welcome
+- **Commercial use**: [Contact us](https://dev-swat.com/contact)
+
+This project is built on the [VS Code Open Source](https://github.com/microsoft/vscode) foundation (MIT licensed). The Resonant AI extension and all Resonant Genesis-specific modifications are covered by the Resonant Genesis Source Available License.
+
+---
+
+<div align="center">
+
+**Built on Resonant Genesis technology by Louie Nemesh**
+
+*The future of development is AI-native.*
+
+</div>
