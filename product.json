@@ -1,0 +1,199 @@
+{
+	"quality": "stable",
+	"nameShort": "Resonant IDE",
+	"nameLong": "Resonant IDE",
+	"applicationName": "resonant-ide",
+	"dataFolderName": ".resonant-ide",
+	"win32MutexName": "resonantide",
+	"licenseName": "Resonant Genesis Source Available License",
+	"licenseUrl": "https://resonantgenesis.xyz/license",
+	"serverLicenseUrl": "https://resonantgenesis.xyz/license",
+	"serverGreeting": [],
+	"serverLicense": [],
+	"serverLicensePrompt": "",
+	"serverApplicationName": "resonant-ide-server",
+	"serverDataFolderName": ".resonant-ide-server",
+	"tunnelApplicationName": "resonant-ide-tunnel",
+	"win32DirName": "Resonant IDE",
+	"win32NameVersion": "Resonant IDE",
+	"win32RegValueName": "ResonantIDE",
+	"win32x64AppId": "{{D77B7E06-80BA-4137-BCF4-654B95CCEBC5}",
+	"win32arm64AppId": "{{D1ACE434-89C5-48D1-88D3-E2991DF85475}",
+	"win32x64UserAppId": "{{CC6B787D-37A0-49E8-AE24-8559A032BE0C}",
+	"win32arm64UserAppId": "{{3AEBF0C8-F733-4AD4-BADE-FDB816D53D7B}",
+	"win32AppUserModelId": "ResonantGenesis.ResonantIDE",
+	"win32ShellNameShort": "R&esonant IDE",
+	"win32TunnelServiceMutex": "resonantide-tunnelservice",
+	"win32TunnelMutex": "resonantide-tunnel",
+	"darwinBundleIdentifier": "com.resonantgenesis.resonant-ide",
+	"darwinProfileUUID": "47827DD9-4734-49A0-AF80-7E19B11495CC",
+	"darwinProfilePayloadUUID": "CF808BE7-53F3-46C6-A7E2-7EDB98A5E959",
+	"linuxIconName": "resonant-ide",
+	"licenseFileName": "LICENSE.txt",
+	"reportIssueUrl": "https://resonantgenesis.xyz/feedback",
+	"nodejsRepository": "https://nodejs.org",
+	"urlProtocol": "resonant-ide",
+	"webviewContentExternalBaseUrlTemplate": "https://{{uuid}}.vscode-cdn.net/insider/ef65ac1ba57f57f2a3961bfe94aa20481caca4c6/out/vs/workbench/contrib/webview/browser/pre/",
+	"extensionsGallery": {
+		"serviceUrl": "https://open-vsx.org/vscode/gallery",
+		"itemUrl": "https://open-vsx.org/vscode/item",
+		"resourceUrlTemplate": "https://open-vsx.org/vscode/unpkg/{publisher}/{name}/{version}/{path}",
+		"controlUrl": "",
+		"nlsBaseUrl": "",
+		"publisherUrl": ""
+	},
+	"crashReporter": {
+		"companyName": "Resonant Genesis",
+		"productName": "Resonant IDE"
+	},
+	"enableTelemetry": false,
+	"enabledTelemetryLevels": {
+		"error": true,
+		"crash": true,
+		"usage": false
+	},
+	"builtInExtensions": [
+		{
+			"name": "ms-vscode.js-debug-companion",
+			"version": "1.1.3",
+			"sha256": "7380a890787452f14b2db7835dfa94de538caf358ebc263f9d46dd68ac52de93",
+			"repo": "https://github.com/microsoft/vscode-js-debug-companion",
+			"metadata": {
+				"id": "99cb0b7f-7354-4278-b8da-6cc79972169d",
+				"publisherId": {
+					"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+					"publisherName": "ms-vscode",
+					"displayName": "Microsoft",
+					"flags": "verified"
+				},
+				"publisherDisplayName": "Microsoft"
+			}
+		},
+		{
+			"name": "ms-vscode.js-debug",
+			"version": "1.112.0",
+			"sha256": "c24322931434940938f8cf76ebc3dac1e95a5539b9625b165b6672d7f7eafea8",
+			"repo": "https://github.com/microsoft/vscode-js-debug",
+			"metadata": {
+				"id": "25629058-ddac-4e17-abba-74678e126c5d",
+				"publisherId": {
+					"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+					"publisherName": "ms-vscode",
+					"displayName": "Microsoft",
+					"flags": "verified"
+				},
+				"publisherDisplayName": "Microsoft"
+			}
+		},
+		{
+			"name": "ms-vscode.vscode-js-profile-table",
+			"version": "1.0.10",
+			"sha256": "7361748ddf9fd09d8a2ed1f2a2d7376a2cf9aae708692820b799708385c38e08",
+			"repo": "https://github.com/microsoft/vscode-js-profile-visualizer",
+			"metadata": {
+				"id": "7e52b41b-71ad-457b-ab7e-0620f1fc4feb",
+				"publisherId": {
+					"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+					"publisherName": "ms-vscode",
+					"displayName": "Microsoft",
+					"flags": "verified"
+				},
+				"publisherDisplayName": "Microsoft"
+			}
+		}
+	],
+	"defaultChatAgent": {
+		"extensionId": "resonant-genesis.resonant-ai",
+		"chatExtensionId": "resonant-genesis.resonant-ai",
+		"documentationUrl": "https://resonantgenesis.xyz/docs",
+		"termsStatementUrl": "https://resonantgenesis.xyz/terms",
+		"privacyStatementUrl": "https://resonantgenesis.xyz/privacy",
+		"skusDocumentationUrl": "https://resonantgenesis.xyz/docs/plans",
+		"publicCodeMatchesUrl": "",
+		"manageSettingsUrl": "",
+		"managePlanUrl": "",
+		"manageOverageUrl": "",
+		"upgradePlanUrl": "",
+		"signUpUrl": "https://resonantgenesis.xyz/signup",
+		"provider": {
+			"default": {
+				"id": "resonant-genesis",
+				"name": "Resonant Genesis"
+			},
+			"enterprise": {
+				"id": "resonant-genesis-enterprise",
+				"name": "Resonant Genesis Enterprise"
+			},
+			"google": {
+				"id": "google",
+				"name": "Google"
+			},
+			"apple": {
+				"id": "apple",
+				"name": "Apple"
+			}
+		},
+		"providerExtensionId": "resonant-genesis.resonant-ai",
+		"providerScopes": [
+			[
+				"read:user",
+				"user:email"
+			]
+		],
+		"entitlementUrl": "",
+		"entitlementSignupLimitedUrl": "",
+		"chatQuotaExceededContext": "resonant.chat.quotaExceeded",
+		"completionsQuotaExceededContext": "resonant.completions.quotaExceeded",
+		"walkthroughCommand": "resonant.openChat",
+		"completionsMenuCommand": "",
+		"completionsRefreshTokenCommand": "",
+		"chatRefreshTokenCommand": "",
+		"generateCommitMessageCommand": "resonant.openChat",
+		"resolveMergeConflictsCommand": "",
+		"completionsAdvancedSetting": "",
+		"completionsEnablementSetting": "",
+		"nextEditSuggestionsSetting": "",
+		"tokenEntitlementUrl": "",
+		"mcpRegistryDataUrl": ""
+	},
+	"trustedExtensionAuthAccess": {
+		"resonant-genesis": [
+			"resonant-genesis.resonant-ai"
+		]
+	},
+	"commandPaletteSuggestedCommandIds": [
+		"workbench.action.terminal.toggleTerminal",
+		"workbench.action.toggleSidebarVisibility",
+		"workbench.action.togglePanel",
+		"workbench.action.quickOpen",
+		"workbench.action.showCommands",
+		"workbench.action.openSettings",
+		"editor.action.formatDocument",
+		"workbench.action.files.save",
+		"workbench.action.debug.start"
+	],
+	"commonlyUsedSettings": [
+		"editor.fontSize",
+		"editor.fontFamily",
+		"editor.tabSize",
+		"editor.renderWhitespace",
+		"editor.cursorStyle",
+		"editor.wordWrap",
+		"files.autoSave",
+		"editor.formatOnSave",
+		"editor.formatOnPaste",
+		"workbench.colorTheme",
+		"terminal.integrated.fontSize"
+	],
+	"aiConfig": {
+		"ariaKey": "resonant-ide"
+	},
+	"extensionEnabledApiProposals": {
+		"resonant-genesis.resonant-ai": [
+			"defaultChatParticipant",
+			"chatParticipantAdditions",
+			"chatParticipantPrivate",
+			"chatProvider"
+		]
+	}
+}
