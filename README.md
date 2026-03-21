@@ -4,7 +4,7 @@
 
 ### The AI-Native Development Environment by Resonant Genesis
 
-**Built entirely by AI, orchestrated by [Louie Nemesh](https://dev-swat.com)**
+**Created by [Louie Nemesh](https://dev-swat.com)**
 
 [![License: RG Source Available](https://img.shields.io/badge/License-RG%20Source%20Available-blue.svg)](LICENSE.txt)
 [![Platform](https://img.shields.io/badge/Platform-dev--swat.com-purple.svg)](https://dev-swat.com)
@@ -639,7 +639,6 @@ We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) 
 
 **Resonant IDE** and the entire **Resonant Genesis** platform were built by **Louie Nemesh** — an AI architect who started this project on **November 11, 2025** with a singular vision: to build the world's most comprehensive AI governance platform.
 
-**Every single line of code was written by AI**, orchestrated and directed by Louie as the sole human architect. No team of developers. No outsourced contractors. One person directing AI to build an enterprise-grade platform with 30+ microservices, blockchain integration, a full IDE, and a marketplace — proving that the future of software development is human-AI collaboration at its finest.
 
 > *"I didn't write a single line of code myself. I architected, I directed, I made every decision — but the code was written by AI. This is what the future looks like."*
 > — Louie Nemesh, Founder & AI Architect
@@ -653,7 +652,6 @@ We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) 
 - **53** React UI components
 - **4** AI providers (OpenAI, Anthropic, Groq, Google)
 - **3** smart contracts on Base Sepolia (Ethereum L2)
-- **1** human architect
 - **0** lines of human-written code
 
 ---
