@@ -525,6 +525,11 @@ class JavaScriptAnalyzer:
             )
 
 
+# Limits — local mode, no real cap needed
+MAX_FILES = 10000
+MAX_FILE_SIZE = 20 * 1024 * 1024 * 1024  # 20GB — effectively no limit
+
+
 class CodebaseAnalyzer:
     """Main analyzer that processes entire codebase"""
     
@@ -535,6 +540,8 @@ class CodebaseAnalyzer:
         self.services: Dict[str, List[str]] = {}
         self.pipelines: Dict[str, Pipeline] = {}
         self.file_contents: Dict[str, str] = {}
+        self._files_analyzed = 0
+        self._truncated = False
         
     def analyze(self) -> Dict[str, Any]:
         """Analyze entire codebase"""
@@ -588,6 +595,9 @@ class CodebaseAnalyzer:
             
             # Analyze Python files
             for py_file in service_path.rglob("*.py"):
+                if self._files_analyzed >= MAX_FILES:
+                    self._truncated = True
+                    break
                 if "__pycache__" in str(py_file) or "venv" in str(py_file):
                     continue
                 
@@ -603,6 +613,7 @@ class CodebaseAnalyzer:
                     service=service_name
                 )
                 self.nodes[file_node.id] = file_node
+                self._files_analyzed += 1
                 
                 conn = CodeConnection(
                     source_id=f"service:{service_name}",
@@ -629,6 +640,9 @@ class CodebaseAnalyzer:
             # Analyze JS/TS files (frontend and any JS utilities)
             for pattern in ("*.js", "*.jsx", "*.ts", "*.tsx"):
                 for js_file in service_path.rglob(pattern):
+                    if self._files_analyzed >= MAX_FILES:
+                        self._truncated = True
+                        break
                     p = str(js_file)
                     if (
                         "/node_modules/" in p
@@ -656,6 +670,7 @@ class CodebaseAnalyzer:
                         metadata={"language": "js"},
                     )
                     self.nodes[file_node.id] = file_node
+                    self._files_analyzed += 1
 
                     self.connections.append(
                         CodeConnection(
@@ -944,6 +959,8 @@ class CodebaseAnalyzer:
             "pipelines": {name: p.to_dict() for name, p in self.pipelines.items()},
             "stats": {
                 "total_files": sum(len(files) for files in self.services.values()),
+                "files_analyzed": self._files_analyzed,
+                "truncated": self._truncated,
                 "total_services": len(self.services),
                 "total_connections": len(self.connections),
                 "total_functions": len([n for n in self.nodes.values() if n.type == NodeType.FUNCTION]),

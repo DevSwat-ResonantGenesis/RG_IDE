@@ -1447,8 +1447,8 @@ async function cvExec(command: string, targetPath: string, extraArgs: string[] =
   const args = [cliPath, command, targetPath, ...extraArgs];
   return new Promise((resolve) => {
     cp.execFile('python3', args, {
-      timeout: 120000,
-      maxBuffer: 1024 * 1024 * 20,
+      timeout: 600000,
+      maxBuffer: 1024 * 1024 * 1024 * 5,
     }, (error, stdout, stderr) => {
       if (error) {
         resolve(JSON.stringify({ error: `Code Visualizer failed: ${error.message}`, stderr: (stderr || '').slice(0, 500) }));

@@ -23,6 +23,50 @@ import { ResonantInlineCompletionProvider, setInlineCompletionAuth, setInlineCom
 import { testLocalConnection, listLocalModels } from './localLLMProvider';
 import { disposeAllSessions as disposeTerminalSessions } from './interactiveTerminal';
 
+/** Compact summary of Code Visualizer results for the LLM.
+ *  Full report stays local — user sees it in chat. Only this summary goes to server. */
+const CV_TOOLS = new Set(['code_visualizer_scan', 'code_visualizer_graph', 'code_visualizer_functions', 'code_visualizer_governance', 'code_visualizer_trace', 'code_visualizer_filter', 'code_visualizer_by_type']);
+function summarizeCVForServer(toolName: string, raw: string): string {
+	try {
+		const d = JSON.parse(raw);
+		if (d.error) { return raw; }
+		const lines: string[] = [`Code Visualizer (${toolName}) completed.`];
+		const s = d.stats || d.analysis?.stats || {};
+		if (s.total_services) { lines.push(`Services: ${s.total_services}`); }
+		if (s.files_analyzed) { lines.push(`Files analyzed: ${s.files_analyzed}${s.truncated ? ' (capped)' : ''}`); }
+		if (s.total_functions) { lines.push(`Functions: ${s.total_functions}`); }
+		if (s.total_endpoints) { lines.push(`Endpoints: ${s.total_endpoints}`); }
+		if (s.total_connections) { lines.push(`Connections: ${s.total_connections}`); }
+		if (s.broken_connections) { lines.push(`Broken connections: ${s.broken_connections}`); }
+		const services = d.services || {};
+		const svcNames = Object.keys(services).slice(0, 15);
+		if (svcNames.length) { lines.push(`Service names: ${svcNames.join(', ')}`); }
+		const nodes = d.nodes || [];
+		const funcs = nodes.filter((n: any) => n.type === 'function').slice(0, 15);
+		if (funcs.length) {
+			lines.push(`Top functions:`);
+			for (const f of funcs) { lines.push(`  - ${f.name} (${f.file_path}:${f.line_start || '?'})`); }
+		}
+		const eps = nodes.filter((n: any) => n.type === 'api_endpoint').slice(0, 15);
+		if (eps.length) {
+			lines.push(`API endpoints:`);
+			for (const ep of eps) { lines.push(`  - ${ep.metadata?.route || ep.name} (${ep.file_path})`); }
+		}
+		if (d.reachability_score !== undefined) { lines.push(`Reachability: ${d.reachability_score}`); }
+		if (d.drift_score !== undefined) { lines.push(`Drift: ${d.drift_score}`); }
+		const violations = d.violations || [];
+		if (violations.length) {
+			lines.push(`Violations: ${violations.length}`);
+			for (const v of violations.slice(0, 5)) { lines.push(`  - ${v.type || v.rule || 'issue'}: ${String(v.message || v.details || '').slice(0, 120)}`); }
+		}
+		lines.push('');
+		lines.push('Full detailed report is shown to the user in the IDE. Discuss architecture, patterns, and findings — do NOT ask to re-scan.');
+		return lines.join('\n');
+	} catch {
+		return raw.length > 5000 ? raw.slice(0, 5000) + '\n... (truncated for server)' : raw;
+	}
+}
+
 /** POST tool result back to server for the server-side agent loop */
 function postToolResult(
 	apiUrl: string,
@@ -265,8 +309,10 @@ function processServerAgentLoop(
 										}
 									}
 									// POST result to server so it can continue the loop
+									// For Code Visualizer: send compact summary (full report stays local for user)
+									const serverResult = CV_TOOLS.has(toolName) ? summarizeCVForServer(toolName, toolResult) : toolResult;
 									try {
-										await postToolResult(apiUrl, authToken, sessionId, callId, toolName, toolResult);
+										await postToolResult(apiUrl, authToken, sessionId, callId, toolName, serverResult);
 									} catch (err) {
 										console.error('[Resonant AI] Failed to POST tool result:', err);
 									}

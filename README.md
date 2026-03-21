@@ -326,6 +326,211 @@ Your identity is cryptographically bound to the Ethereum Base Sepolia L2 blockch
 
 ---
 
+## Why Resonant IDE — Architecture Advantages
+
+Resonant IDE follows the same **thin-client + server-orchestrated agentic loop** architecture pioneered by tools like Windsurf Cascade, but with fundamental improvements across every layer. If you've used Cascade, Cursor, or Copilot Chat, Resonant IDE will feel familiar — and then show you what's been missing.
+
+### Agentic Loop with Full Control
+
+| Capability | Resonant IDE | Windsurf / Cursor |
+|-----------|-------------|-------------------|
+| **Loop depth control** | Configurable max tool loops (1 → unlimited) per session | Fixed or limited loop depth |
+| **Smart context passing** | Server compresses Code Visualizer results, passes summaries between loops — only actionable data reaches the LLM | Full tool output forwarded, burning tokens on noise |
+| **Token burn reduction** | AST summaries replace raw file reads; CV results are 50-200 lines instead of 5,000+ | No built-in static analysis; LLM reads entire files |
+| **Local + server tool split** | 59 tools execute locally (zero latency), server handles orchestration only | All tools run in cloud sandbox or limited local |
+| **Provider flexibility** | 11 providers: 5 cloud (OpenAI, Anthropic, Groq, Google, DeepSeek) + 5 local (Ollama, LM Studio, llama.cpp, LocalAI, vLLM) + BYOK | Typically 1-3 providers, no local LLM support |
+| **Fallback chain** | Automatic BYOK → other BYOK keys → platform pool, with full transparency | Single provider, manual switching on failure |
+| **Traceability** | Every loop iteration logged with provider, model, token count, tool calls, duration | Minimal or no execution tracing |
+| **Transparency** | Full SSE event stream: `thinking`, `text`, `execute_tool`, `fallback`, `stats`, `done` | Opaque response generation |
+| **Cost control** | Platform credits, BYOK priority routing, per-session token tracking | Subscription-based, no per-session visibility |
+| **Customization** | Connect any local LLM, set preferred provider, configure loop depth, choose models per task | Fixed model selection |
+
+### Smart Context Between Loops
+
+When the AI runs a Code Visualizer scan, the full report (thousands of nodes, connections, pipelines) stays local in the IDE chat for you to see. But the server only receives a **compressed summary** — service names, function counts, endpoint counts, violation highlights. This means:
+
+- **Loop 1**: AI scans your codebase → gets architectural overview (200 tokens instead of 12,000)
+- **Loop 2**: AI traces a specific function → gets caller/callee chain (focused, minimal)
+- **Loop 3**: AI runs governance check → gets violations and drift score
+- **Result**: 3 loops, full codebase understanding, ~500 tokens of context instead of ~30,000
+
+This is why Resonant IDE can run deeper agentic loops without hitting context limits — the AI knows more while reading less.
+
+### Local-First Philosophy
+
+Every tool runs on **your machine**. File reads, grep searches, git operations, terminal commands, Code Visualizer scans — all local. The server only sees:
+1. Your prompt
+2. Compressed tool results
+3. Your BYOK keys (encrypted, never stored)
+
+No code leaves your machine unless you explicitly share it. No cloud sandbox. No file upload. Full privacy, full speed.
+
+> **See more:** The full tool list (59 tools across 11 categories) is documented above in [59 Tools (11 Categories)](#59-tools-11-categories).
+
+---
+
+## AST Code Visualizer — Full Capabilities
+
+The built-in Code Visualizer is far more than a file reader. It's a **complete AST-based static analysis engine** that gives the AI architectural understanding of your codebase without reading every file. This is the single biggest token-saving feature in Resonant IDE.
+
+### What Traditional AI IDEs Do vs. What Resonant IDE Does
+
+```
+Traditional AI IDE:                    Resonant IDE:
+─────────────────                      ─────────────
+User: "Explain this project"           User: "Explain this project"
+  → AI reads file1.py (500 tokens)       → AI runs code_visualizer_scan
+  → AI reads file2.py (800 tokens)       → Gets: 15 services, 342 functions,
+  → AI reads file3.py (600 tokens)         47 endpoints, 6 pipelines, 12
+  → AI reads file4.py (400 tokens)         broken connections (200 tokens)
+  → ... (20 more files)                  → AI already understands architecture
+  → Total: 15,000+ tokens               → Total: 200 tokens
+  → Still doesn't see connections        → Sees full dependency graph
+```
+
+### Complete Analysis Capabilities
+
+| Capability | Description | Use Case |
+|-----------|-------------|----------|
+| **Full AST Scan** | Parse every `.py`, `.js`, `.ts`, `.tsx`, `.jsx` file using Python `ast` module (Python) and regex-based analysis (JS/TS) | "Analyze this project's architecture" |
+| **Node Discovery** | Extract services, files, functions, classes, API endpoints, database connections, external HTTP calls | "What services does this project have?" |
+| **Connection Mapping** | Map imports, function calls, API calls, database queries, HTTP requests, WebSocket connections, class inheritance | "How do these services communicate?" |
+| **Pipeline Detection** | Auto-discover user_registration, login, chat_flow, billing, agent_execution, memory pipelines across multi-service codebases | "Show me the login flow end-to-end" |
+| **Dead Code Detection** | Find unreachable functions, unused imports, orphaned files — classified as LIVE, Dormant, Experimental, Deprecated, or Invalid | "Find dead code in this project" |
+| **Execution Tracing** | Trace a specific function's full dependency chain — who calls it (incoming) and what it calls (outgoing) | "Trace the authentication flow" |
+| **Governance Analysis** | Reachability contracts from entry points, forbidden dependency rules, architecture drift scoring (0-100), CI-ready output | "Run architecture governance check" |
+| **File Comparison** | Compare node graphs between different analysis runs to detect structural changes over time | "What changed architecturally since last scan?" |
+| **Code Migration Tracking** | Track how files and connections evolve across multiple scans — see the timeline of architectural changes | "Show me the hot map of recent changes" |
+| **Broken Connection Detection** | Identify imports that don't resolve, API calls to missing endpoints, database queries to non-existent tables | "Find broken imports in the codebase" |
+| **Service Boundary Analysis** | Map which files belong to which service, detect cross-service dependencies, identify coupling | "Are these services properly isolated?" |
+| **Graph Filtering** | Filter by file path, node type, keyword, or service to focus on specific subsystems | "Show only the auth service functions" |
+| **GitHub Annotations** | Export violations as GitHub-compatible annotation format for CI integration | CI/CD pipeline enforcement |
+
+### Languages Supported
+
+| Language | Parser | Depth |
+|----------|--------|-------|
+| **Python** | `ast` module (full AST) | Functions, classes, decorators, imports, HTTP calls, DB queries, async/await, inheritance |
+| **JavaScript** | Regex-based | Functions, arrow functions, classes, imports (ES6 + CommonJS), fetch/axios/HTTP calls |
+| **TypeScript** | Regex-based | Same as JavaScript + type annotations preserved in metadata |
+| **JSX/TSX** | Regex-based | React components detected as functions/classes |
+
+### Smart Summarization for AI
+
+The full analysis JSON can be 50,000+ characters for a large codebase. But the AI only sees a **human-readable summary** (200-500 characters):
+
+```
+Code Visualizer (scan) completed.
+Services: 12
+Files analyzed: 847
+Functions: 2,341
+Endpoints: 433
+Connections: 5,672
+Broken connections: 23
+Service names: gateway, auth_service, chat_service, memory_service, ...
+Top functions:
+  - route_query (multi_ai_router.py:45)
+  - authenticate (auth.py:12)
+API endpoints:
+  - POST /api/v1/chat/message (resonant_chat.py)
+  - GET /api/v1/auth/me (user_routes.py)
+```
+
+The full detailed report is always shown in the IDE chat for the developer to explore. The AI uses the summary to reason about architecture without burning tokens.
+
+> **Source:** `extensions/resonant-ai/code_visualizer/` — `analyzer.py` (1,051 lines), `governance.py` (385 lines), `cv_cli.py` (165 lines). Licensed under the Resonant Genesis Source Available License.
+
+---
+
+## State Physics & Invariant SIM Integration
+
+Resonant IDE connects to the **RARA (Resident Autonomous Runtime Agent)** system — a physics-inspired governance engine that treats your running platform as a physical system with measurable properties: entropy, energy, mass, collapse risk. This isn't a metaphor — it's a deterministic simulation that predicts failures before they happen.
+
+### What is State Physics SIM?
+
+State Physics models your platform as a **physical system** where:
+- **Services** are nodes with mass (code size), energy (request throughput), and trust scores
+- **Connections** between services are edges with measured latency and failure rates
+- **Agents** (AI or human) have value scores that decay on failure and grow on success
+- **Entropy** measures system disorder — high entropy means things are drifting apart
+- **Collapse risk** predicts cascading failures before they happen
+
+### Three Classes of Invariants
+
+The Invariant SIM enforces **17 invariants** across three classes:
+
+#### Structural Invariants (7)
+Graph-level constraints verified via the AST Code Visualizer:
+
+| Invariant | What It Checks | Severity |
+|-----------|---------------|----------|
+| **Route Reachability** | Every public route reaches a handler: `∀ route R → ∃ handler H : path(R → H)` | CRITICAL |
+| **No Orphan Handlers** | Every handler has at least one route pointing to it | HIGH |
+| **Auth Boundary** | No unauthenticated path can reach privileged resources | CRITICAL |
+| **No Execution Cycles** | No circular call chains without a circuit breaker | HIGH |
+| **Capability Isolation** | Agent nodes cannot directly depend on core service internals | CRITICAL |
+| **File Integrity** | Modified files must be syntactically valid (AST-parseable) | HIGH |
+| **Dependency Resolution** | All imports must resolve to existing modules | MEDIUM |
+
+#### Semantic Invariants (5)
+Intent and confidence constraints:
+
+| Invariant | What It Checks | Severity |
+|-----------|---------------|----------|
+| **Confidence Threshold** | AI mutation confidence must exceed 0.6 before execution | HIGH |
+| **Rationale Present** | Every code change must have a non-empty explanation | MEDIUM |
+| **Intent Alignment** | The change must match the declared capability | HIGH |
+| **Scope Containment** | Changes must not exceed declared file/service boundaries | CRITICAL |
+| **Reversibility** | Every mutation must be rollback-capable | HIGH |
+
+#### Temporal Invariants (5)
+Rate limiting and blast radius constraints:
+
+| Invariant | What It Checks | Severity |
+|-----------|---------------|----------|
+| **Rate Limit** | Max mutations per hour/day not exceeded | HIGH |
+| **Blast Radius** | Number of affected services per mutation stays within threshold | HIGH |
+| **Cooldown Period** | Minimum time between mutations to the same file/service | MEDIUM |
+| **Rollback Frequency** | If rollbacks are happening too often, something is wrong | HIGH |
+| **Failure Circuit Breaker** | 3+ consecutive failures suspends the capability | CRITICAL |
+
+### How It Works in the IDE
+
+When the AI makes code changes through the agentic loop, the Invariant SIM can:
+
+1. **Pre-mutation check** — Before writing a file, verify structural invariants (no broken imports, no auth boundary violations)
+2. **Blast radius prediction** — Estimate how many services will be affected by a change
+3. **Confidence gating** — If the AI's confidence is below threshold, require human approval
+4. **Automatic rollback** — If post-mutation checks fail, instantly restore the previous state
+5. **Circuit breaking** — If an agent keeps failing, automatically suspend its capabilities
+
+### Physics Bridge — Predicting Failures
+
+The Physics Bridge translates measured system state into governance actions:
+
+```
+Physics State (measured)          Governance Action (automatic)
+────────────────────────          ────────────────────────────
+Collapse risk > 0.8         →    EMERGENCY STOP (kill switch)
+Invariant violations > 0    →    Block further mutations
+Entropy > threshold         →    Warn + require human approval
+Agent trust < 0.3           →    Revoke agent capabilities
+Energy spike detected       →    Rate limit mutations
+Mass imbalance              →    Flag architectural drift
+```
+
+### What This Means for Developers
+
+- **Simulate user flows** through connected APIs before deploying — trace the path from login → chat → memory → billing and verify every connection
+- **Predict overload points** — find services with high connection density that will fail under load
+- **Detect migration risks** — before refactoring, see which invariants will break and what the blast radius will be
+- **Enforce architecture rules** — forbidden dependencies (e.g., frontend → backend internals) are caught at the graph level, not in code review
+- **CI-ready governance** — export invariant results as GitHub annotations for automated architecture enforcement
+
+> **Source:** The Invariant SIM runs as a standalone service [`RG_Internal_Invarients_SIM`](https://github.com/DevSwat-ResonantGenesis/RG_Internal_Invarients_SIM) — 29 Python modules including `invariant_engine.py`, `invariant_classes.py`, `physics_bridge.py`, `kill_switch.py`, `mutation_executor.py`, `governance_engine.py`, `capability_engine.py`, `compliance.py` (EU AI Act + SOC2), and `cryptographic_receipt.py` (tamper-proof mutation receipts).
+
+---
+
 ## Getting Started
 
 ### Prerequisites
