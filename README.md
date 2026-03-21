@@ -314,6 +314,69 @@ User asks: "Analyze this project's architecture"
 
 > The Code Visualizer source lives in `extensions/resonant-ai/code_visualizer/` — analyzer.py (1034 lines), governance.py (384 lines), and cv_cli.py (155 lines). Licensed under the Resonant Genesis Source Available License.
 
+### Why AST Analysis Saves 90% of Tokens
+
+Other AI IDEs make the LLM read files one at a time, burning thousands of tokens and still missing the big picture. Resonant IDE scans the entire codebase structurally and delivers a compressed architectural map:
+
+```
+Traditional AI IDE:                    Resonant IDE:
+─────────────────                      ─────────────
+User: "Explain this project"           User: "Explain this project"
+  → AI reads file1.py (500 tokens)       → AI runs code_visualizer_scan
+  → AI reads file2.py (800 tokens)       → Gets: 15 services, 342 functions,
+  → AI reads file3.py (600 tokens)         47 endpoints, 6 pipelines, 12
+  → AI reads file4.py (400 tokens)         broken connections (200 tokens)
+  → ... (20 more files)                  → AI already understands architecture
+  → Total: 15,000+ tokens               → Total: 200 tokens
+  → Still doesn't see connections        → Sees full dependency graph
+```
+
+### Extended Capabilities
+
+Beyond the core analysis listed above, the Code Visualizer also provides:
+
+| Capability | Description | Example Prompt |
+|-----------|-------------|----------------|
+| **Execution Tracing** | Trace a specific function's full dependency chain — who calls it (incoming) and what it calls (outgoing), up to configurable depth | "Trace the authentication flow" |
+| **File Comparison** | Compare node graphs between different analysis runs to detect structural changes over time | "What changed architecturally since last scan?" |
+| **Code Migration Heatmap** | Track how files and connections evolve across multiple scans — see the timeline of modifications and identify migration hotspots | "Show me the hot map of recent changes" |
+| **Broken Connection Detection** | Identify imports that don't resolve, API calls to missing endpoints, database queries to non-existent tables | "Find broken imports in the codebase" |
+| **Service Boundary Analysis** | Map which files belong to which service, detect cross-service dependencies, identify coupling hotspots | "Are these services properly isolated?" |
+| **Graph Filtering** | Filter by file path, node type, keyword, or service to focus on specific subsystems | "Show only the auth service functions" |
+| **GitHub Annotations** | Export violations as GitHub-compatible annotation format for CI integration | CI/CD pipeline enforcement |
+
+### Languages Supported
+
+| Language | Parser | What It Extracts |
+|----------|--------|-----------------|
+| **Python** | `ast` module (full AST) | Functions, classes, decorators, imports, HTTP calls, DB queries, async/await, inheritance |
+| **JavaScript** | Regex-based | Functions, arrow functions, classes, imports (ES6 + CommonJS), fetch/axios/HTTP calls |
+| **TypeScript** | Regex-based | Same as JavaScript + type annotations preserved in metadata |
+| **JSX/TSX** | Regex-based | React components detected as functions/classes |
+
+### Smart Summarization — What the AI Actually Sees
+
+The full analysis JSON can be 50,000+ characters for a large codebase. But the AI only receives a **human-readable summary** (200-500 tokens). The full detailed report stays in your IDE chat for you to explore:
+
+```
+Code Visualizer (scan) completed.
+Services: 12
+Files analyzed: 847
+Functions: 2,341
+Endpoints: 433
+Connections: 5,672
+Broken connections: 23
+Service names: gateway, auth_service, chat_service, memory_service, ...
+Top functions:
+  - route_query (multi_ai_router.py:45)
+  - authenticate (auth.py:12)
+API endpoints:
+  - POST /api/v1/chat/message (resonant_chat.py)
+  - GET /api/v1/auth/me (user_routes.py)
+
+Full detailed report is shown to the user in the IDE.
+```
+
 ---
 
 ## Memory & Identity
@@ -366,79 +429,6 @@ Every tool runs on **your machine**. File reads, grep searches, git operations, 
 No code leaves your machine unless you explicitly share it. No cloud sandbox. No file upload. Full privacy, full speed.
 
 > **See more:** The full tool list (59 tools across 11 categories) is documented above in [59 Tools (11 Categories)](#59-tools-11-categories).
-
----
-
-## AST Code Visualizer — Full Capabilities
-
-The built-in Code Visualizer is far more than a file reader. It's a **complete AST-based static analysis engine** that gives the AI architectural understanding of your codebase without reading every file. This is the single biggest token-saving feature in Resonant IDE.
-
-### What Traditional AI IDEs Do vs. What Resonant IDE Does
-
-```
-Traditional AI IDE:                    Resonant IDE:
-─────────────────                      ─────────────
-User: "Explain this project"           User: "Explain this project"
-  → AI reads file1.py (500 tokens)       → AI runs code_visualizer_scan
-  → AI reads file2.py (800 tokens)       → Gets: 15 services, 342 functions,
-  → AI reads file3.py (600 tokens)         47 endpoints, 6 pipelines, 12
-  → AI reads file4.py (400 tokens)         broken connections (200 tokens)
-  → ... (20 more files)                  → AI already understands architecture
-  → Total: 15,000+ tokens               → Total: 200 tokens
-  → Still doesn't see connections        → Sees full dependency graph
-```
-
-### Complete Analysis Capabilities
-
-| Capability | Description | Use Case |
-|-----------|-------------|----------|
-| **Full AST Scan** | Parse every `.py`, `.js`, `.ts`, `.tsx`, `.jsx` file using Python `ast` module (Python) and regex-based analysis (JS/TS) | "Analyze this project's architecture" |
-| **Node Discovery** | Extract services, files, functions, classes, API endpoints, database connections, external HTTP calls | "What services does this project have?" |
-| **Connection Mapping** | Map imports, function calls, API calls, database queries, HTTP requests, WebSocket connections, class inheritance | "How do these services communicate?" |
-| **Pipeline Detection** | Auto-discover user_registration, login, chat_flow, billing, agent_execution, memory pipelines across multi-service codebases | "Show me the login flow end-to-end" |
-| **Dead Code Detection** | Find unreachable functions, unused imports, orphaned files — classified as LIVE, Dormant, Experimental, Deprecated, or Invalid | "Find dead code in this project" |
-| **Execution Tracing** | Trace a specific function's full dependency chain — who calls it (incoming) and what it calls (outgoing) | "Trace the authentication flow" |
-| **Governance Analysis** | Reachability contracts from entry points, forbidden dependency rules, architecture drift scoring (0-100), CI-ready output | "Run architecture governance check" |
-| **File Comparison** | Compare node graphs between different analysis runs to detect structural changes over time | "What changed architecturally since last scan?" |
-| **Code Migration Tracking** | Track how files and connections evolve across multiple scans — see the timeline of architectural changes | "Show me the hot map of recent changes" |
-| **Broken Connection Detection** | Identify imports that don't resolve, API calls to missing endpoints, database queries to non-existent tables | "Find broken imports in the codebase" |
-| **Service Boundary Analysis** | Map which files belong to which service, detect cross-service dependencies, identify coupling | "Are these services properly isolated?" |
-| **Graph Filtering** | Filter by file path, node type, keyword, or service to focus on specific subsystems | "Show only the auth service functions" |
-| **GitHub Annotations** | Export violations as GitHub-compatible annotation format for CI integration | CI/CD pipeline enforcement |
-
-### Languages Supported
-
-| Language | Parser | Depth |
-|----------|--------|-------|
-| **Python** | `ast` module (full AST) | Functions, classes, decorators, imports, HTTP calls, DB queries, async/await, inheritance |
-| **JavaScript** | Regex-based | Functions, arrow functions, classes, imports (ES6 + CommonJS), fetch/axios/HTTP calls |
-| **TypeScript** | Regex-based | Same as JavaScript + type annotations preserved in metadata |
-| **JSX/TSX** | Regex-based | React components detected as functions/classes |
-
-### Smart Summarization for AI
-
-The full analysis JSON can be 50,000+ characters for a large codebase. But the AI only sees a **human-readable summary** (200-500 characters):
-
-```
-Code Visualizer (scan) completed.
-Services: 12
-Files analyzed: 847
-Functions: 2,341
-Endpoints: 433
-Connections: 5,672
-Broken connections: 23
-Service names: gateway, auth_service, chat_service, memory_service, ...
-Top functions:
-  - route_query (multi_ai_router.py:45)
-  - authenticate (auth.py:12)
-API endpoints:
-  - POST /api/v1/chat/message (resonant_chat.py)
-  - GET /api/v1/auth/me (user_routes.py)
-```
-
-The full detailed report is always shown in the IDE chat for the developer to explore. The AI uses the summary to reason about architecture without burning tokens.
-
-> **Source:** `extensions/resonant-ai/code_visualizer/` — `analyzer.py` (1,051 lines), `governance.py` (385 lines), `cv_cli.py` (165 lines). Licensed under the Resonant Genesis Source Available License.
 
 ---
 
