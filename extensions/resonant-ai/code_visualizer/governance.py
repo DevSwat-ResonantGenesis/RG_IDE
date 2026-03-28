@@ -199,7 +199,17 @@ class GovernanceEngine:
         self.connections = connections
         self.justifications = self.load_justifications(base_path)
         self.violations = []
-        
+
+        # Build adjacency index ONCE for O(N+E) BFS instead of O(N*E)
+        self._adj: Dict[str, Set[str]] = {}
+        for conn in self.connections:
+            src = conn.get('source_id', '') if isinstance(conn, dict) else getattr(conn, 'source_id', '')
+            tgt = conn.get('target_id', '') if isinstance(conn, dict) else getattr(conn, 'target_id', '')
+            if src:
+                self._adj.setdefault(src, set()).add(tgt)
+            if tgt:
+                self._adj.setdefault(tgt, set()).add(src)
+
         live_nodes = self._compute_reachability()
         self._classify_nodes(live_nodes)
         self._check_dependency_rules()
@@ -227,23 +237,19 @@ class GovernanceEngine:
         return None
     
     def _traverse_from_node(self, start_id: str, max_depth: int = 100) -> Set[str]:
+        from collections import deque
         visited: Set[str] = set()
-        queue = [(start_id, 0)]
+        queue: deque = deque([(start_id, 0)])
         
         while queue:
-            node_id, depth = queue.pop(0)
+            node_id, depth = queue.popleft()
             if node_id in visited or depth > max_depth:
                 continue
             visited.add(node_id)
             
-            for conn in self.connections:
-                source = conn.get('source_id', '') if isinstance(conn, dict) else getattr(conn, 'source_id', '')
-                target = conn.get('target_id', '') if isinstance(conn, dict) else getattr(conn, 'target_id', '')
-                
-                if source == node_id and target not in visited:
-                    queue.append((target, depth + 1))
-                if target == node_id and source not in visited:
-                    queue.append((source, depth + 1))
+            for neighbor in self._adj.get(node_id, ()):
+                if neighbor not in visited:
+                    queue.append((neighbor, depth + 1))
         
         return visited
     
@@ -265,14 +271,15 @@ class GovernanceEngine:
                 file_path = node.get('file_path', '') if isinstance(node, dict) else getattr(node, 'file_path', '')
                 name = node.get('name', '') if isinstance(node, dict) else getattr(node, 'name', '')
                 
-                self.violations.append(Violation(
-                    type=ViolationType.UNREACHABLE_CODE,
-                    severity=Severity.MEDIUM,
-                    node_id=node_id,
-                    message=f"'{name}' not reachable from any root",
-                    file_path=file_path,
-                    suggestion=f"Add justification or remove dead code"
-                ))
+                if len(self.violations) < 500:
+                    self.violations.append(Violation(
+                        type=ViolationType.UNREACHABLE_CODE,
+                        severity=Severity.MEDIUM,
+                        node_id=node_id,
+                        message=f"'{name}' not reachable from any root",
+                        file_path=file_path,
+                        suggestion=f"Add justification or remove dead code"
+                    ))
     
     def _check_dependency_rules(self):
         for conn in self.connections:

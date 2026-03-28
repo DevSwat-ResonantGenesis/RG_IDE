@@ -111,6 +111,13 @@ export async function executeToolCall(toolCall: ToolCall, workspaceRoot: string)
       case 'code_visualizer_pipeline': return await cvExec('pipeline', args.path || workspaceRoot, [args.pipeline_name || '']);
       case 'code_visualizer_filter': return await cvExec('filter', args.path || workspaceRoot, [...(args.file_path ? [`--file=${args.file_path}`] : []), ...(args.node_type ? [`--type=${args.node_type}`] : []), ...(args.keyword ? [`--keyword=${args.keyword}`] : [])]);
       case 'code_visualizer_by_type': return await cvExec('by_type', args.path || workspaceRoot, [args.node_type || 'function']);
+      case 'code_visualizer_compare': return await cvExec('compare', args.paths || '', [args.labels || '']);
+      case 'code_visualizer_live_nodes': return await cvExec('live_nodes', args.path || workspaceRoot, [String(args.drift_threshold || 20.0)]);
+      case 'code_visualizer_invalid_nodes': return await cvExec('invalid_nodes', args.path || workspaceRoot, [String(args.drift_threshold || 20.0)]);
+      case 'code_visualizer_compile': return await cvExec('compile', args.path || workspaceRoot, [args.gal_action || '{}']);
+      case 'code_visualizer_verify_invariants': return await cvExec('verify_invariants', args.path || workspaceRoot);
+      // Graph Janitor Agent — autonomous dead code / reachability scanner (runs locally via GovernanceEngine)
+      case 'graph_janitor_scan': return await cvExec('graph_janitor', args.path || workspaceRoot, [String(args.max_proposals || 15), String(args.drift_threshold || 20.0)]);
       // Interactive Terminal
       case 'terminal_create': return await execTerminalCreate(args.name, args.cwd || workspaceRoot, args.shell);
       case 'terminal_send': return await execTerminalSend(args.session_id, args.input);

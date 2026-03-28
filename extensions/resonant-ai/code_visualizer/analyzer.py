@@ -570,7 +570,7 @@ class CodebaseAnalyzer:
         
         # Then discover all subdirectories as potential services
         for item in self.root_path.iterdir():
-            if item.is_dir() and not item.name.startswith('.') and item.name not in ['__pycache__', 'venv', 'node_modules', '.git', 'dist', 'build']:
+            if item.is_dir() and not item.name.startswith('.') and item.name not in ['__pycache__', 'venv', 'node_modules', '.git', 'dist', 'build', 'out', 'coverage', '.cache', '.output', '.turbo', '.next', 'vendor', 'target', 'bin', 'obj', 'lib']:
                 # Check if folder has any code files
                 has_code = any(item.rglob("*.py")) or any(item.rglob("*.js")) or any(item.rglob("*.ts"))
                 if has_code:
@@ -648,9 +648,15 @@ class CodebaseAnalyzer:
                         "/node_modules/" in p
                         or "/dist/" in p
                         or "/build/" in p
+                        or "/out/" in p
                         or "/.next/" in p
                         or "/.turbo/" in p
                         or "/.git/" in p
+                        or "/.output/" in p
+                        or "/coverage/" in p
+                        or "/.cache/" in p
+                        or ".min.js" in p
+                        or ".bundle.js" in p
                     ):
                         continue
                     if "__pycache__" in p or "venv" in p:

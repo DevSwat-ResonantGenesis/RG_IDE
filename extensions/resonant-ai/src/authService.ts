@@ -277,23 +277,23 @@ export class ResonantAuthService {
 	}
 
 	/**
-	 * Poll for token arrival. If not received within ~15s, the user likely
-	 * had to sign in on the browser first (losing the port param). Show a
-	 * notification that re-opens the desktop-callback URL — now the cookie
-	 * is set so the redirect succeeds immediately.
+	 * Aggressive poll: after initial browser open, wait 5s then re-open the
+	 * desktop-callback URL every 2s. Once the user logs in on the browser
+	 * the cookie is set — next poll redirects to localhost and token arrives.
+	 * Stops immediately when token is received. No user interaction needed.
 	 */
 	private _pollForTokenAndRetry(authUrl: string, _port: number): void {
+		const INITIAL_WAIT_MS = 5000;
 		const POLL_INTERVAL_MS = 2000;
-		const FIRST_RETRY_AFTER_MS = 8000;
-		const MAX_RETRIES = 6;
-		let elapsed = 0;
-		let retryCount = 0;
+		const MAX_POLL_DURATION_MS = 120000; // 2 minutes total
+		let totalElapsed = 0;
 
 		const timer = setInterval(async () => {
-			elapsed += POLL_INTERVAL_MS;
+			totalElapsed += POLL_INTERVAL_MS;
 
 			// Token received — done
 			if (this.isLoggedIn()) {
+				console.log('[Resonant Auth] Token received — stopping poll');
 				clearInterval(timer);
 				return;
 			}
@@ -304,27 +304,26 @@ export class ResonantAuthService {
 				return;
 			}
 
-			// After initial delay, offer retry
-			if (elapsed >= FIRST_RETRY_AFTER_MS && retryCount < MAX_RETRIES) {
-				retryCount++;
-				console.log(`[Resonant Auth] No token after ${elapsed / 1000}s — retry #${retryCount}, re-opening callback URL`);
-
-				if (retryCount === 1) {
-					// First retry: silently re-open (user just finished signing in)
-					await vscode.env.openExternal(vscode.Uri.parse(authUrl));
-				} else {
-					// Subsequent retries: show notification with button
-					const action = await vscode.window.showInformationMessage(
-						'Resonant IDE: If you\'ve signed in, click below to complete login.',
-						'Complete Sign In'
-					);
-					if (action === 'Complete Sign In') {
-						await vscode.env.openExternal(vscode.Uri.parse(authUrl));
+			// Give up after max duration
+			if (totalElapsed > MAX_POLL_DURATION_MS) {
+				console.log('[Resonant Auth] Poll timeout — giving up');
+				clearInterval(timer);
+				vscode.window.showWarningMessage(
+					'Resonant IDE: Login timed out. Please try again.',
+					'Retry'
+				).then(action => {
+					if (action === 'Retry') {
+						vscode.commands.executeCommand('resonant.login');
 					}
-				}
+				});
+				this._closeLocalServer();
+				return;
+			}
 
-				// Reset elapsed to wait another interval before next retry
-				elapsed = FIRST_RETRY_AFTER_MS - POLL_INTERVAL_MS;
+			// After initial wait, silently re-open the auth URL every interval
+			if (totalElapsed >= INITIAL_WAIT_MS) {
+				console.log(`[Resonant Auth] Poll ${Math.round(totalElapsed / 1000)}s — re-opening callback`);
+				await vscode.env.openExternal(vscode.Uri.parse(authUrl));
 			}
 		}, POLL_INTERVAL_MS);
 

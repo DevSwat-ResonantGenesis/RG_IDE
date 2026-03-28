@@ -134,18 +134,18 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 				reject(err);
 			});
 
-			// Poll-and-retry: if user had to sign in on the browser first,
-			// the port param is lost. After 8s, silently re-open the callback
-			// URL (cookie is now set, so redirect succeeds immediately).
-			let retryCount = 0;
+			// Aggressive poll: after 5s, re-open the callback URL every 2s.
+			// Once user logs in on browser, cookie is set and next poll succeeds.
+			let pollElapsed = 0;
 			const retryTimer = setInterval(async () => {
+				pollElapsed += 2000;
 				if (resolved || !this._localServer) { clearInterval(retryTimer); return; }
-				retryCount++;
-				if (retryCount <= 6) {
-					console.log(`[Resonant Auth Provider] No token after ${retryCount * 4}s — retry #${retryCount}`);
+				if (pollElapsed > 120000) { clearInterval(retryTimer); return; } // 2min max
+				if (pollElapsed >= 5000) {
+					console.log(`[Resonant Auth Provider] Poll ${Math.round(pollElapsed / 1000)}s — re-opening callback`);
 					await vscode.env.openExternal(vscode.Uri.parse(authUrl));
 				}
-			}, 8000);
+			}, 2000);
 		});
 	}
 

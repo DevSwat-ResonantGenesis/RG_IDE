@@ -25,7 +25,7 @@ import { disposeAllSessions as disposeTerminalSessions } from './interactiveTerm
 
 /** Compact summary of Code Visualizer results for the LLM.
  *  Full report stays local — user sees it in chat. Only this summary goes to server. */
-const CV_TOOLS = new Set(['code_visualizer_scan', 'code_visualizer_graph', 'code_visualizer_functions', 'code_visualizer_governance', 'code_visualizer_trace', 'code_visualizer_filter', 'code_visualizer_by_type']);
+const CV_TOOLS = new Set(['code_visualizer_scan', 'code_visualizer_graph', 'code_visualizer_functions', 'code_visualizer_governance', 'code_visualizer_trace', 'code_visualizer_pipeline', 'code_visualizer_filter', 'code_visualizer_by_type', 'code_visualizer_compare', 'code_visualizer_live_nodes', 'code_visualizer_invalid_nodes', 'code_visualizer_compile', 'code_visualizer_verify_invariants']);
 function summarizeCVForServer(toolName: string, raw: string): string {
 	try {
 		const d = JSON.parse(raw);
@@ -291,7 +291,10 @@ function processServerAgentLoop(
 										toolResult = JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
 									}
 									const toolTime = ((Date.now() - toolStart) / 1000).toFixed(1);
-									const isError = toolResult.includes('"error"');
+									// CV results contain "error" in file metadata for parse failures — not a tool failure
+									const isError = CV_TOOLS.has(toolName)
+										? toolResult.startsWith('{"error"')
+										: toolResult.includes('"error"');
 									chatResponse.markdown(`> ${isError ? '❌' : '✅'} **${toolTime}s**\n`);
 
 									// Track LOC
