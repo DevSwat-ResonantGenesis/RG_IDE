@@ -25,11 +25,13 @@ import { disposeAllSessions as disposeTerminalSessions } from './interactiveTerm
 
 /** Compact summary of Code Visualizer results for the LLM.
  *  Full report stays local — user sees it in chat. Only this summary goes to server. */
-const CV_TOOLS = new Set(['code_visualizer_scan', 'code_visualizer_graph', 'code_visualizer_functions', 'code_visualizer_governance', 'code_visualizer_trace', 'code_visualizer_pipeline', 'code_visualizer_filter', 'code_visualizer_by_type', 'code_visualizer_compare', 'code_visualizer_live_nodes', 'code_visualizer_invalid_nodes', 'code_visualizer_compile', 'code_visualizer_verify_invariants']);
+const CV_TOOLS = new Set(['code_visualizer_scan', 'code_visualizer_graph', 'code_visualizer_functions', 'code_visualizer_governance', 'code_visualizer_trace', 'code_visualizer_pipeline', 'code_visualizer_filter', 'code_visualizer_by_type', 'code_visualizer_compare', 'code_visualizer_live_nodes', 'code_visualizer_invalid_nodes', 'code_visualizer_compile', 'code_visualizer_verify_invariants', 'graph_janitor_scan']);
 function summarizeCVForServer(toolName: string, raw: string): string {
 	try {
 		const d = JSON.parse(raw);
 		if (d.error) { return raw; }
+		// Graph Janitor Agent — return full JSON (compact enough, server needs it for health cache)
+		if (toolName === 'graph_janitor_scan' && d.health_indicators) { return raw; }
 		const lines: string[] = [`Code Visualizer (${toolName}) completed.`];
 		const s = d.stats || d.analysis?.stats || {};
 		if (s.total_services) { lines.push(`Services: ${s.total_services}`); }
@@ -267,7 +269,8 @@ function processServerAgentLoop(
 								const toolArgs: Record<string, any> = p.arguments || {};
 								const callId: string = p.tool_call_id || '';
 								const sessionId: string = p.session_id || '';
-								totalToolCalls++;
+								const isBackground: boolean = !!p.background;
+								if (!isBackground) { totalToolCalls++; }
 
 								// Normalize arg names
 								toolArgs.path = toolArgs.path || toolArgs.file_path || toolArgs.file || toolArgs.filename;
@@ -277,8 +280,8 @@ function processServerAgentLoop(
 								toolArgs.cwd = toolArgs.cwd || toolArgs.working_directory || toolArgs.directory || toolArgs.Cwd;
 								toolArgs.input = toolArgs.input || toolArgs.text;
 
-								// Render tool UI
-								renderToolUI(toolName, toolArgs);
+								// Render tool UI (skip for background pre-flight scans)
+								if (!isBackground) { renderToolUI(toolName, toolArgs); }
 
 								// Execute locally, POST result back (async — server waits)
 								(async () => {
@@ -295,7 +298,7 @@ function processServerAgentLoop(
 									const isError = CV_TOOLS.has(toolName)
 										? toolResult.startsWith('{"error"')
 										: toolResult.includes('"error"');
-									chatResponse.markdown(`> ${isError ? '❌' : '✅'} **${toolTime}s**\n`);
+									if (!isBackground) { chatResponse.markdown(`> ${isError ? '❌' : '✅'} **${toolTime}s**\n`); }
 
 									// Track LOC
 									if (['file_write', 'file_edit', 'multi_edit'].includes(toolName) && !isError) {
