@@ -39,6 +39,7 @@ class ViolationType(str, Enum):
     ISOLATED_NODE = "isolated_node"
     DRIFT_THRESHOLD = "drift_threshold"
     MISSING_JUSTIFICATION = "missing_justification"
+    BROKEN_CONNECTION = "broken_connection"
     INVALID_DIRECTION = "invalid_direction"
 
 
@@ -201,20 +202,26 @@ class GovernanceEngine:
         self.justifications = self.load_justifications(base_path)
         self.violations = []
 
-        # Build adjacency index ONCE for O(N+E) BFS instead of O(N*E)
+        # Build directional adjacency (source→target) for proper reachability
+        # Plus reverse adjacency for nodes that are *called by* roots
         self._adj: Dict[str, Set[str]] = {}
+        self._adj_rev: Dict[str, Set[str]] = {}
         for conn in self.connections:
             src = conn.get('source_id', '') if isinstance(conn, dict) else getattr(conn, 'source_id', '')
             tgt = conn.get('target_id', '') if isinstance(conn, dict) else getattr(conn, 'target_id', '')
-            if src:
-                self._adj.setdefault(src, set()).add(tgt)
-            if tgt:
-                self._adj.setdefault(tgt, set()).add(src)
+            status = conn.get('status', 'active') if isinstance(conn, dict) else getattr(conn, 'status', 'active')
+            # Only build adjacency for non-broken connections
+            if str(status) not in ('broken', 'dead'):
+                if src:
+                    self._adj.setdefault(src, set()).add(tgt)
+                if tgt:
+                    self._adj_rev.setdefault(tgt, set()).add(src)
 
         live_nodes = self._compute_reachability()
         self._classify_nodes(live_nodes)
         self._check_dependency_rules()
         self._check_isolated_nodes()
+        self._check_broken_connections()
         
         return self._generate_report()
     
@@ -351,6 +358,32 @@ class GovernanceEngine:
                         file_path=file_path,
                         suggestion="Connect or add justification"
                     ))
+    
+    def _check_broken_connections(self):
+        """Flag broken/dead connections as violations."""
+        broken_count = 0
+        for conn in self.connections:
+            status = conn.get('status', 'active') if isinstance(conn, dict) else getattr(conn, 'status', 'active')
+            if str(status) in ('broken', 'dead'):
+                broken_count += 1
+                if broken_count > 200:  # Cap violations to avoid noise
+                    continue
+                source = conn.get('source_id', '') if isinstance(conn, dict) else getattr(conn, 'source_id', '')
+                target = conn.get('target_id', '') if isinstance(conn, dict) else getattr(conn, 'target_id', '')
+                conn_type = conn.get('type', '') if isinstance(conn, dict) else getattr(conn, 'type', '')
+                # Get file path from source node
+                src_node = self.nodes.get(source, {})
+                file_path = src_node.get('file_path', '') if isinstance(src_node, dict) else getattr(src_node, 'file_path', '')
+                sev = Severity.HIGH if str(conn_type) == 'import' else Severity.MEDIUM
+                self.violations.append(Violation(
+                    type=ViolationType.BROKEN_CONNECTION,
+                    severity=sev,
+                    node_id=source,
+                    message=f"Broken {conn_type}: {source} -> {target}",
+                    file_path=file_path,
+                    suggestion=f"Fix or remove broken {status} connection",
+                    metadata={'target': target, 'connection_status': str(status)}
+                ))
     
     def _generate_report(self) -> GovernanceReport:
         total = len(self.nodes)

@@ -1,0 +1,947 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.activate = activate;
+exports.deactivate = deactivate;
+/*---------------------------------------------------------------------------------------------
+ *  Resonant AI Extension — Thin Client
+ *  Registers as a Language Model Provider + Chat Participant for the built-in Chat panel.
+ *  All orchestration (system prompt, tool selection, agentic loop) runs server-side.
+ *  This client renders UI, discovers local LLM models, and executes tools locally.
+ *--------------------------------------------------------------------------------------------*/
+const vscode = __importStar(require("vscode"));
+const https = __importStar(require("https"));
+const http = __importStar(require("http"));
+const url_1 = require("url");
+const authService_1 = require("./authService");
+const authProvider_1 = require("./authProvider");
+const languageModelProvider_1 = require("./languageModelProvider");
+const profileWebview_1 = require("./profileWebview");
+const settingsPanel_1 = require("./settingsPanel");
+const agentProvider_1 = require("./agentProvider");
+const chatViewProvider_1 = require("./chatViewProvider");
+const toolExecutor_1 = require("./toolExecutor");
+const toolDefinitions_1 = require("./toolDefinitions");
+const locTracker_1 = require("./locTracker");
+const updateChecker_1 = require("./updateChecker");
+const inlineCompletionProvider_1 = require("./inlineCompletionProvider");
+const localLLMProvider_1 = require("./localLLMProvider");
+const interactiveTerminal_1 = require("./interactiveTerminal");
+/** Compact summary of Code Visualizer results for the LLM.
+ *  Full report stays local — user sees it in chat. Only this summary goes to server. */
+const CV_TOOLS = new Set(['code_visualizer_scan', 'code_visualizer_graph', 'code_visualizer_functions', 'code_visualizer_governance', 'code_visualizer_trace', 'code_visualizer_pipeline', 'code_visualizer_filter', 'code_visualizer_by_type', 'code_visualizer_compare', 'code_visualizer_live_nodes', 'code_visualizer_invalid_nodes', 'code_visualizer_compile', 'code_visualizer_verify_invariants', 'graph_janitor_scan']);
+function summarizeCVForServer(toolName, raw) {
+    try {
+        const d = JSON.parse(raw);
+        if (d.error) {
+            return raw;
+        }
+        // Graph Janitor Agent — return full JSON (compact enough, server needs it for health cache)
+        if (toolName === 'graph_janitor_scan' && d.health_indicators) {
+            return raw;
+        }
+        const lines = [`Code Visualizer (${toolName}) completed.`];
+        const s = d.stats || d.analysis?.stats || {};
+        if (s.total_services) {
+            lines.push(`Services: ${s.total_services}`);
+        }
+        if (s.files_analyzed) {
+            lines.push(`Files analyzed: ${s.files_analyzed}${s.truncated ? ' (capped)' : ''}`);
+        }
+        if (s.total_functions) {
+            lines.push(`Functions: ${s.total_functions}`);
+        }
+        if (s.total_endpoints) {
+            lines.push(`Endpoints: ${s.total_endpoints}`);
+        }
+        if (s.total_connections) {
+            lines.push(`Connections: ${s.total_connections}`);
+        }
+        if (s.broken_connections) {
+            lines.push(`Broken connections: ${s.broken_connections}`);
+        }
+        const services = d.services || {};
+        const svcNames = Object.keys(services).slice(0, 15);
+        if (svcNames.length) {
+            lines.push(`Service names: ${svcNames.join(', ')}`);
+        }
+        const nodes = d.nodes || [];
+        const funcs = nodes.filter((n) => n.type === 'function').slice(0, 15);
+        if (funcs.length) {
+            lines.push(`Top functions:`);
+            for (const f of funcs) {
+                lines.push(`  - ${f.name} (${f.file_path}:${f.line_start || '?'})`);
+            }
+        }
+        const eps = nodes.filter((n) => n.type === 'api_endpoint').slice(0, 15);
+        if (eps.length) {
+            lines.push(`API endpoints:`);
+            for (const ep of eps) {
+                lines.push(`  - ${ep.metadata?.route || ep.name} (${ep.file_path})`);
+            }
+        }
+        if (d.reachability_score !== undefined) {
+            lines.push(`Reachability: ${d.reachability_score}`);
+        }
+        if (d.drift_score !== undefined) {
+            lines.push(`Drift: ${d.drift_score}`);
+        }
+        const violations = d.violations || [];
+        if (violations.length) {
+            lines.push(`Violations: ${violations.length}`);
+            for (const v of violations.slice(0, 5)) {
+                lines.push(`  - ${v.type || v.rule || 'issue'}: ${String(v.message || v.details || '').slice(0, 120)}`);
+            }
+        }
+        lines.push('');
+        lines.push('Full detailed report is shown to the user in the IDE. Discuss architecture, patterns, and findings — do NOT ask to re-scan.');
+        return lines.join('\n');
+    }
+    catch {
+        return raw.length > 5000 ? raw.slice(0, 5000) + '\n... (truncated for server)' : raw;
+    }
+}
+const TERMINAL_TOOLS = new Set(['run_command', 'terminal_command', 'execute_command']);
+const GREP_TOOLS = new Set(['grep_search', 'find_by_name', 'code_search']);
+/** Format tool execution result as visible chat output (like Windsurf terminal streaming) */
+function formatToolOutputForChat(toolName, raw) {
+    try {
+        const d = JSON.parse(raw);
+        if (d.error) {
+            return `\`\`\`\n❌ ${d.error}\n\`\`\`\n`;
+        }
+        // Terminal / shell commands — show stdout + stderr
+        if (TERMINAL_TOOLS.has(toolName) || toolName === 'git_status' || toolName === 'git_diff' || toolName === 'git_log') {
+            const out = (d.stdout || '').trim();
+            const err = (d.stderr || '').trim();
+            if (!out && !err) {
+                return '```\n(no output)\n```\n';
+            }
+            let block = '```\n';
+            if (out) {
+                block += out.slice(0, 4000) + (out.length > 4000 ? '\n... (truncated)' : '') + '\n';
+            }
+            if (err) {
+                block += '⚠ ' + err.slice(0, 1000) + '\n';
+            }
+            block += '```\n';
+            return block;
+        }
+        // Grep / search results
+        if (GREP_TOOLS.has(toolName)) {
+            const out = (d.stdout || d.output || '').trim();
+            if (d.matches) {
+                return `\`\`\`\n${JSON.stringify(d.matches, null, 2).slice(0, 3000)}\n\`\`\`\n`;
+            }
+            if (out) {
+                return `\`\`\`\n${out.slice(0, 3000)}\n\`\`\`\n`;
+            }
+            return '';
+        }
+        // File read — show preview
+        if (toolName === 'file_read') {
+            const content = d.content || d.text || '';
+            if (content) {
+                const ext = (d.path || '').split('.').pop() || '';
+                const preview = content.slice(0, 2000) + (content.length > 2000 ? '\n... (truncated)' : '');
+                return `\`\`\`${ext}\n${preview}\n\`\`\`\n`;
+            }
+            return '';
+        }
+        // File write/edit — show confirmation
+        if (toolName === 'file_write') {
+            return `> ✏️ Wrote ${d.bytes_written || '?'} bytes\n`;
+        }
+        if (toolName === 'file_edit' || toolName === 'multi_edit') {
+            return `> ✏️ Edit applied\n`;
+        }
+        // Background command status
+        if (d.command_id && d.status) {
+            const out = (d.output || '').trim();
+            let block = `> Status: **${d.status}**\n`;
+            if (out) {
+                block += `\`\`\`\n${out.slice(0, 2000)}\n\`\`\`\n`;
+            }
+            return block;
+        }
+        // Code Visualizer / Janitor — show key stats
+        if (CV_TOOLS.has(toolName)) {
+            if (d.health_indicators) {
+                const hi = d.health_indicators;
+                return `> ${hi.status_emoji || '🔍'} Health: **${hi.health_score}%** — ${hi.status}\n> Nodes: ${d.metrics?.total_nodes || '?'} | Proposals: ${(d.proposals || []).length}\n`;
+            }
+            if (d.stats) {
+                const s = d.stats;
+                return `> 📊 Files: ${s.total_files || '?'} | Functions: ${s.total_functions || '?'} | Endpoints: ${s.total_endpoints || '?'} | Broken: ${s.broken_connections || 0}\n`;
+            }
+        }
+        return '';
+    }
+    catch {
+        // Non-JSON output (plain text from some tools)
+        if (raw && raw.length > 0 && raw.length < 5000) {
+            return `\`\`\`\n${raw.slice(0, 3000)}\n\`\`\`\n`;
+        }
+        return '';
+    }
+}
+/** POST tool result back to server for the server-side agent loop */
+function postToolResult(apiUrl, authToken, sessionId, toolCallId, name, result) {
+    return new Promise((resolve, reject) => {
+        const url = new url_1.URL(`${apiUrl}/api/v1/ide/agent-stream/${sessionId}/tool-results`);
+        const payload = JSON.stringify({ tool_call_id: toolCallId, name, result });
+        const isHttps = url.protocol === 'https:';
+        const reqModule = isHttps ? https : http;
+        const headers = {
+            'Content-Type': 'application/json',
+            'Content-Length': String(Buffer.byteLength(payload)),
+        };
+        if (authToken.startsWith('RG-')) {
+            headers['x-api-key'] = authToken;
+        }
+        else {
+            headers['Authorization'] = `Bearer ${authToken}`;
+            headers['Cookie'] = `rg_access_token=${authToken}`;
+        }
+        const req = reqModule.request({
+            hostname: url.hostname,
+            port: url.port || (isHttps ? 443 : 80),
+            path: url.pathname,
+            method: 'POST',
+            headers,
+        }, (res) => {
+            let body = '';
+            res.on('data', (c) => { body += c.toString(); });
+            res.on('end', () => {
+                if (res.statusCode && res.statusCode < 400) {
+                    resolve();
+                }
+                else {
+                    reject(new Error(`Tool result POST ${res.statusCode}: ${body.slice(0, 200)}`));
+                }
+            });
+            res.on('error', reject);
+        });
+        req.on('error', reject);
+        req.write(payload);
+        req.end();
+    });
+}
+/**
+ * Server-side agentic loop via SSE. The server runs the loop (LLM calls,
+ * tool selection, message history, system prompt). The client only renders
+ * UI and executes tools locally when the server requests it.
+ *
+ * This is the THIN CLIENT path — all orchestration logic is on the server.
+ * Tool definitions and system prompts never leave the server.
+ */
+function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResponse, cancellationToken) {
+    return new Promise((resolve, reject) => {
+        const url = new url_1.URL(`${apiUrl}/api/v1/ide/agent-stream`);
+        const payload = JSON.stringify(body);
+        const isHttps = url.protocol === 'https:';
+        const reqModule = isHttps ? https : http;
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+            'Content-Length': String(Buffer.byteLength(payload)),
+        };
+        if (authToken.startsWith('RG-')) {
+            headers['x-api-key'] = authToken;
+        }
+        else {
+            headers['Authorization'] = `Bearer ${authToken}`;
+            headers['Cookie'] = `rg_access_token=${authToken}`;
+        }
+        let totalToolCalls = 0;
+        const fallbackChain = [];
+        let buffer = '';
+        let resolved = false;
+        const shortPath = (p) => {
+            if (!p) {
+                return '';
+            }
+            if (p.startsWith(workspaceRoot + '/')) {
+                return p.slice(workspaceRoot.length + 1);
+            }
+            const parts = p.split('/');
+            return parts.length > 3 ? '.../' + parts.slice(-2).join('/') : p;
+        };
+        const trunc = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
+        const resolvePath = (p) => {
+            if (!p) {
+                return workspaceRoot;
+            }
+            if (require('path').isAbsolute(p)) {
+                return p;
+            }
+            return require('path').join(workspaceRoot, p);
+        };
+        const FILE_TOOLS = new Set(['file_read', 'file_write', 'file_edit', 'multi_edit', 'file_delete', 'file_move', 'file_list']);
+        /** Render ⚡ tool label + code preview in chat */
+        const renderToolUI = (toolName, toolArgs) => {
+            let toolLabel = '';
+            let codePreview = '';
+            if (toolName === 'run_command') {
+                const cmd = (toolArgs.command || '').slice(0, 120);
+                const cwd = toolArgs.cwd ? shortPath(toolArgs.cwd) : '';
+                toolLabel = `Command${cwd ? ' in \`' + cwd + '\`' : ''}`;
+                codePreview = `\n\`\`\`sh\n${cmd}\n\`\`\`\n`;
+            }
+            else if (toolName === 'file_read') {
+                toolLabel = `Read \`${shortPath(toolArgs.path || '')}\`${toolArgs.offset ? ` (lines ${toolArgs.offset}-${toolArgs.offset + (toolArgs.limit || 100)})` : ''}`;
+            }
+            else if (toolName === 'file_write') {
+                toolLabel = `Write \`${shortPath(toolArgs.path || '')}\``;
+                if (toolArgs.content) {
+                    const ext = (toolArgs.path || '').split('.').pop() || '';
+                    const lang = ext === 'ts' || ext === 'tsx' ? 'typescript' : ext === 'js' || ext === 'jsx' ? 'javascript' : ext === 'py' ? 'python' : ext === 'html' ? 'html' : ext === 'css' ? 'css' : ext === 'json' ? 'json' : '';
+                    codePreview = `\n\`\`\`${lang}\n${trunc(toolArgs.content, 500)}\n\`\`\`\n`;
+                }
+            }
+            else if (toolName === 'file_edit') {
+                const exp = toolArgs.explanation ? ` — ${toolArgs.explanation}` : '';
+                toolLabel = `Edit \`${shortPath(toolArgs.path || '')}\`${exp}`;
+                if (toolArgs.old_string || toolArgs.new_string) {
+                    codePreview = '\n\`\`\`diff\n';
+                    if (toolArgs.old_string) {
+                        codePreview += String(toolArgs.old_string).split('\n').slice(0, 8).map((l) => '- ' + l).join('\n') + '\n';
+                    }
+                    if (toolArgs.new_string) {
+                        codePreview += String(toolArgs.new_string).split('\n').slice(0, 8).map((l) => '+ ' + l).join('\n') + '\n';
+                    }
+                    codePreview += '\`\`\`\n';
+                }
+            }
+            else if (toolName === 'multi_edit') {
+                const n = Array.isArray(toolArgs.edits) ? toolArgs.edits.length : '?';
+                toolLabel = `Multi-edit \`${shortPath(toolArgs.path || '')}\` (${n} edits)`;
+            }
+            else if (toolName === 'grep_search') {
+                toolLabel = `Search: \`${trunc(toolArgs.pattern || '', 40)}\` in \`${shortPath(toolArgs.path || '')}\``;
+            }
+            else if (toolName === 'find_by_name') {
+                toolLabel = `Find: \`${trunc(toolArgs.pattern || '', 40)}\``;
+            }
+            else if (toolName === 'search_web') {
+                toolLabel = `Web search: \`${trunc(toolArgs.query || '', 50)}\``;
+            }
+            else if (toolName === 'file_list') {
+                toolLabel = `List files in \`${shortPath(toolArgs.path || '')}\``;
+            }
+            else if (toolName === 'file_delete') {
+                toolLabel = `Delete \`${shortPath(toolArgs.path || '')}\``;
+            }
+            else if (toolName === 'code_search') {
+                toolLabel = `Code search: \`${trunc(toolArgs.query || '', 40)}\``;
+            }
+            else if (toolName === 'ssh_run') {
+                toolLabel = `SSH run · ${toolArgs.user ? toolArgs.user + '@' : ''}${toolArgs.host || ''}`;
+                if (toolArgs.command) {
+                    codePreview = `\n\`\`\`sh\n${trunc(toolArgs.command || '', 160)}\n\`\`\`\n`;
+                }
+            }
+            else if (toolName.startsWith('terminal_')) {
+                toolLabel = `Terminal: ${toolName.replace('terminal_', '')}`;
+            }
+            else if (toolName.startsWith('code_visualizer_')) {
+                toolLabel = `Code analysis: ${toolName.replace('code_visualizer_', '')}`;
+            }
+            else {
+                toolLabel = `${toolName.replace(/_/g, ' ')}`;
+            }
+            chatResponse.markdown(`\n\n> ⚡ ${toolLabel}\n`);
+            if (codePreview) {
+                chatResponse.markdown(codePreview);
+            }
+        };
+        const req = reqModule.request({
+            hostname: url.hostname,
+            port: url.port || (isHttps ? 443 : 80),
+            path: url.pathname,
+            method: 'POST',
+            headers,
+        }, (res) => {
+            if (res.statusCode !== 200) {
+                let errBody = '';
+                res.on('data', (c) => { errBody += c.toString(); });
+                res.on('end', () => reject(new Error(`API ${res.statusCode}: ${errBody.slice(0, 300)}`)));
+                return;
+            }
+            res.on('data', (chunk) => {
+                buffer += chunk.toString();
+                const blocks = buffer.split('\n\n');
+                buffer = blocks.pop() || '';
+                for (const block of blocks) {
+                    if (!block.trim()) {
+                        continue;
+                    }
+                    let event = '';
+                    let data = '';
+                    for (const line of block.split('\n')) {
+                        if (line.startsWith('event: ')) {
+                            event = line.slice(7);
+                        }
+                        else if (line.startsWith('data: ')) {
+                            data = line.slice(6);
+                        }
+                    }
+                    if (!data) {
+                        continue;
+                    }
+                    try {
+                        const p = JSON.parse(data);
+                        switch (event) {
+                            case 'thinking':
+                                chatResponse.progress(p.message || 'Thinking...');
+                                break;
+                            case 'text':
+                                if (p.content) {
+                                    chatResponse.markdown(p.content);
+                                }
+                                break;
+                            case 'execute_tool': {
+                                const toolName = p.name || '';
+                                const toolArgs = p.arguments || {};
+                                const callId = p.tool_call_id || '';
+                                const sessionId = p.session_id || '';
+                                const isBackground = !!p.background;
+                                if (!isBackground) {
+                                    totalToolCalls++;
+                                }
+                                // Normalize arg names
+                                toolArgs.path = toolArgs.path || toolArgs.file_path || toolArgs.file || toolArgs.filename;
+                                toolArgs.content = toolArgs.content || toolArgs.text || toolArgs.code || toolArgs.data;
+                                toolArgs.command = toolArgs.command || toolArgs.cmd || toolArgs.shell_command || toolArgs.CommandLine;
+                                toolArgs.pattern = toolArgs.pattern || toolArgs.query || toolArgs.search || toolArgs.regex;
+                                toolArgs.cwd = toolArgs.cwd || toolArgs.working_directory || toolArgs.directory || toolArgs.Cwd;
+                                toolArgs.input = toolArgs.input || toolArgs.text;
+                                // Render tool UI (skip for background pre-flight scans)
+                                if (!isBackground) {
+                                    renderToolUI(toolName, toolArgs);
+                                }
+                                // Execute locally, POST result back (async — server waits)
+                                (async () => {
+                                    const toolStart = Date.now();
+                                    let toolResult;
+                                    try {
+                                        const fakeTC = { id: callId, type: 'function', function: { name: toolName, arguments: JSON.stringify(toolArgs) } };
+                                        toolResult = await (0, toolExecutor_1.executeToolCall)(fakeTC, workspaceRoot);
+                                    }
+                                    catch (err) {
+                                        toolResult = JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+                                    }
+                                    const toolTime = ((Date.now() - toolStart) / 1000).toFixed(1);
+                                    // CV results contain "error" in file metadata for parse failures — not a tool failure
+                                    const isError = CV_TOOLS.has(toolName)
+                                        ? toolResult.startsWith('{"error"')
+                                        : toolResult.includes('"error"');
+                                    if (!isBackground) {
+                                        chatResponse.markdown(`> ${isError ? '❌' : '✅'} **${toolTime}s**\n`);
+                                        // Render tool output in chat (terminal stdout, grep matches, file content, etc.)
+                                        const outputBlock = formatToolOutputForChat(toolName, toolResult);
+                                        if (outputBlock) {
+                                            chatResponse.markdown(outputBlock);
+                                        }
+                                    }
+                                    else {
+                                        // Background tools — show brief summary so user sees results
+                                        const bgOutput = formatToolOutputForChat(toolName, toolResult);
+                                        if (bgOutput) {
+                                            chatResponse.markdown(`\n> 🔄 Background: **${toolName.replace(/_/g, ' ')}**\n${bgOutput}`);
+                                        }
+                                    }
+                                    // Track LOC
+                                    if (['file_write', 'file_edit', 'multi_edit'].includes(toolName) && !isError) {
+                                        (0, locTracker_1.trackToolLOC)(toolName, toolArgs);
+                                    }
+                                    // Auto-open files
+                                    if (FILE_TOOLS.has(toolName)) {
+                                        const filePath = resolvePath(toolArgs.path || toolArgs.source);
+                                        if (filePath && filePath !== workspaceRoot) {
+                                            try {
+                                                const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+                                                await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
+                                            }
+                                            catch { /* file might not exist yet */ }
+                                        }
+                                    }
+                                    // POST result to server so it can continue the loop
+                                    // For Code Visualizer: send compact summary (full report stays local for user)
+                                    const serverResult = CV_TOOLS.has(toolName) ? summarizeCVForServer(toolName, toolResult) : toolResult;
+                                    try {
+                                        await postToolResult(apiUrl, authToken, sessionId, callId, toolName, serverResult);
+                                    }
+                                    catch (err) {
+                                        console.error('[Resonant AI] Failed to POST tool result:', err);
+                                    }
+                                })().catch(err => console.error('[Resonant AI] Tool execution error:', err));
+                                break;
+                            }
+                            case 'fallback': {
+                                const attempt = p.attempt || fallbackChain.length + 1;
+                                fallbackChain.push({ provider: p.provider || '', model: p.model || '', attempt });
+                                if (attempt === 1) {
+                                    chatResponse.progress(`Trying ${p.provider}/${p.model}...`);
+                                }
+                                else {
+                                    chatResponse.progress(`Fallback #${attempt}: trying ${p.provider}/${p.model}...`);
+                                }
+                                break;
+                            }
+                            case 'tool_done':
+                                break;
+                            case 'tool_output': {
+                                // Server-side tool result preview — render in chat so user sees server-side execution output
+                                const outputName = p.name || '';
+                                const preview = p.preview || '';
+                                if (preview) {
+                                    chatResponse.markdown(`\n> 🖥️ Server: **${outputName.replace(/_/g, ' ')}**\n`);
+                                    const serverOutput = formatToolOutputForChat(outputName, preview);
+                                    if (serverOutput) {
+                                        chatResponse.markdown(serverOutput);
+                                    }
+                                }
+                                break;
+                            }
+                            case 'stats':
+                                if (Array.isArray(p.fallback_chain)) {
+                                    for (const fb of p.fallback_chain) {
+                                        if (!fallbackChain.some(e => e.provider === fb.provider && e.attempt === fb.attempt)) {
+                                            fallbackChain.push(fb);
+                                        }
+                                    }
+                                }
+                                if (!resolved) {
+                                    resolved = true;
+                                    const tokenCount = p.tokens || p.total_tokens || p.tokens_used
+                                        || (p.usage ? (p.usage.total_tokens || (p.usage.prompt_tokens || 0) + (p.usage.completion_tokens || 0)) : 0)
+                                        || 0;
+                                    resolve({
+                                        loops: p.loops || 0,
+                                        toolCalls: p.tool_calls || totalToolCalls,
+                                        tokens: tokenCount,
+                                        provider: p.provider || '',
+                                        model: p.model || '',
+                                        fallbackChain,
+                                    });
+                                }
+                                break;
+                            case 'done':
+                                if (!resolved) {
+                                    resolved = true;
+                                    resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '', fallbackChain });
+                                }
+                                break;
+                            case 'error':
+                                if (!resolved) {
+                                    resolved = true;
+                                    reject(new Error(p.error || 'Unknown server error'));
+                                }
+                                break;
+                        }
+                    }
+                    catch { /* skip malformed SSE data */ }
+                }
+            });
+            res.on('end', () => {
+                if (!resolved) {
+                    resolved = true;
+                    resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '', fallbackChain });
+                }
+            });
+            res.on('error', (err) => { if (!resolved) {
+                resolved = true;
+                reject(err);
+            } });
+        });
+        req.on('error', (err) => { if (!resolved) {
+            resolved = true;
+            reject(err);
+        } });
+        cancellationToken.onCancellationRequested(() => {
+            req.destroy();
+            if (!resolved) {
+                resolved = true;
+                resolve({ loops: 0, toolCalls: totalToolCalls, tokens: 0, provider: '', model: '', fallbackChain });
+            }
+        });
+        req.write(payload);
+        req.end();
+    });
+}
+let authService;
+function activate(context) {
+    console.log('[Resonant AI] Extension activating...');
+    // Register VS Code authentication provider (powers the Sign In button)
+    const authProvider = new authProvider_1.ResonantAuthenticationProvider(context);
+    context.subscriptions.push(authProvider);
+    // Auth service for token management
+    authService = new authService_1.ResonantAuthService(context);
+    context.subscriptions.push({ dispose: () => authService.dispose() });
+    // Register as Language Model Provider for the built-in Chat panel
+    const lmProvider = new languageModelProvider_1.ResonantLanguageModelProvider(context, async () => authService.getToken());
+    context.subscriptions.push(vscode.lm.registerLanguageModelChatProvider('resonant', lmProvider));
+    console.log('[Resonant AI] Registered language model provider "resonant"');
+    // Register inline completion provider (ghost text / Copilot-style completions)
+    const inlineProvider = new inlineCompletionProvider_1.ResonantInlineCompletionProvider();
+    context.subscriptions.push(vscode.languages.registerInlineCompletionItemProvider({ pattern: '**' }, inlineProvider));
+    // Wire auth for inline completions when token is available
+    const wireInlineAuth = () => {
+        const token = authService.getToken();
+        const config = vscode.workspace.getConfiguration('resonant');
+        const apiUrl = (config.get('apiUrl', '') || authService.getAuthDomain()) + '/api/v1/ide/completions';
+        if (token)
+            (0, inlineCompletionProvider_1.setInlineCompletionAuth)(apiUrl, token);
+        (0, inlineCompletionProvider_1.setInlineCompletionEnabled)(config.get('inlineCompletions', true));
+    };
+    wireInlineAuth();
+    // Toggle command
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.toggleInlineCompletions', () => {
+        const config = vscode.workspace.getConfiguration('resonant');
+        const current = config.get('inlineCompletions', true);
+        config.update('inlineCompletions', !current, vscode.ConfigurationTarget.Global);
+        (0, inlineCompletionProvider_1.setInlineCompletionEnabled)(!current);
+        vscode.window.showInformationMessage(`Resonant AI inline completions: ${!current ? 'ON' : 'OFF'}`);
+    }));
+    console.log('[Resonant AI] Registered inline completion provider');
+    // Register as Chat Participant (agent) — full agentic loop with local tool execution.
+    // Calls /api/v1/ide/completions DIRECTLY with LOCAL_TOOL_DEFINITIONS.
+    const participant = vscode.chat.createChatParticipant('resonant-genesis.resonant-ai.default', async (request, chatContext, response, token) => {
+        const config = vscode.workspace.getConfiguration('resonant');
+        const configuredUrl = config.get('apiUrl', '');
+        const apiUrl = configuredUrl || authService.getAuthDomain();
+        const authToken = authService.getToken();
+        const configuredLoops = config.get('maxToolLoops', 15);
+        const maxLoops = configuredLoops === 0 ? 999999 : configuredLoops; // 0 = unlimited
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const workspaceRoot = workspaceFolder || require('os').homedir();
+        // Determine selected model from VS Code model picker (must be before auth check)
+        let providerKey = 'groq';
+        let modelName = 'llama-3.3-70b-versatile';
+        try {
+            // VS Code Chat API: request.model is the user's ACTUAL selection from the picker
+            const selectedId = request.model?.id;
+            if (selectedId && selectedId.startsWith('resonant-')) {
+                const parts = selectedId.replace(/^resonant-/, '').split('-');
+                providerKey = parts[0];
+                modelName = parts.slice(1).join('-');
+            }
+            else {
+                // Fallback: selectChatModels returns ALL models — pick first (not ideal)
+                const models = await vscode.lm.selectChatModels({ vendor: 'resonant' });
+                if (models[0]) {
+                    const id = models[0].id;
+                    const parts = id.replace(/^resonant-/, '').split('-');
+                    providerKey = parts[0];
+                    modelName = parts.slice(1).join('-');
+                }
+            }
+        }
+        catch { /* use defaults */ }
+        // Auth required for all modes — server handles orchestration even for local LLM
+        if (!authToken) {
+            response.markdown('⚠️ Please sign in first. Use **Resonant AI: Sign In** from the command palette or click the status bar.');
+            return;
+        }
+        // Wire auth info for server-backed memory
+        (0, toolExecutor_1.setAuthInfo)(authToken, apiUrl);
+        // Warn if no workspace folder is open
+        if (!workspaceFolder) {
+            response.markdown('⚠️ **No folder is open.** Please open a project folder first:\n\n1. **File → Open Folder** (or ⌘O)\n2. Select your project directory\n3. Then ask me to analyze it\n\nI need a workspace folder to read files, search code, and run tools.');
+            return;
+        }
+        const openFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+        const locStart = (0, locTracker_1.getSessionStats)();
+        const startTime = Date.now();
+        let totalToolCalls = 0;
+        let totalTokens = 0;
+        let loops = 0;
+        let lastProvider = '';
+        let lastModel = '';
+        try {
+            // ═══════════════════════════════════════════════════════════
+            // SERVER-SIDE AGENTIC LOOP — thin client (ALL providers)
+            // Server handles: LLM calls, tool selection, system prompt,
+            // message history, retry logic. Client only renders UI and
+            // executes tools locally when the server requests it.
+            // For local LLM (Ollama): server proxies LLM calls through
+            // the client's local endpoint.
+            // ═══════════════════════════════════════════════════════════
+            const chatHistoryContext = [];
+            for (const turn of chatContext.history) {
+                if (turn instanceof vscode.ChatRequestTurn) {
+                    chatHistoryContext.push({ role: 'user', content: turn.prompt });
+                }
+                else if (turn instanceof vscode.ChatResponseTurn) {
+                    let text = '';
+                    for (const part of turn.response) {
+                        if (part instanceof vscode.ChatResponseMarkdownPart) {
+                            text += part.value.value;
+                        }
+                    }
+                    if (text) {
+                        let cleaned = text.replace(/\n\n---\n\*🔧[\s\S]*?\*\n?/g, '\n').replace(/\n\*✏️ Session LOC:[^\n]*\n?/g, '\n').trim();
+                        if (cleaned) {
+                            chatHistoryContext.push({ role: 'assistant', content: cleaned });
+                        }
+                    }
+                }
+            }
+            // Build request body — include local LLM info if user selected Ollama
+            const requestBody = {
+                prompt: request.prompt,
+                workspace_root: workspaceRoot,
+                active_file: openFile,
+                model_id: `resonant-${providerKey}-${modelName}`,
+                context: chatHistoryContext.slice(-40),
+                max_loops: maxLoops,
+            };
+            if (providerKey === 'ollama') {
+                const localLLMConfig = vscode.workspace.getConfiguration('resonant.localLLM');
+                requestBody.local_llm = {
+                    url: localLLMConfig.get('url', 'http://localhost:11434'),
+                    model: modelName || localLLMConfig.get('model', 'llama3.1:8b'),
+                    context_length: localLLMConfig.get('contextLength', 32768),
+                };
+            }
+            const stats = await processServerAgentLoop(apiUrl, authToken, requestBody, workspaceRoot, response, token);
+            totalToolCalls = stats.toolCalls;
+            totalTokens = stats.tokens;
+            loops = stats.loops;
+            lastProvider = stats.provider;
+            lastModel = stats.model;
+            // Summary line — always show metrics
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            const tokenStr = totalTokens > 0 ? ` · ${totalTokens.toLocaleString()} tokens` : '';
+            const providerStr = lastProvider ? ` · ${lastProvider}${lastModel ? '/' + lastModel : ''}` : '';
+            const preferredStr = `${providerKey}/${modelName}`;
+            const actualStr = lastProvider ? `${lastProvider}${lastModel ? '/' + lastModel : ''}` : '';
+            const fbChain = stats.fallbackChain || [];
+            response.markdown(`\n\n---\n*🔧 ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''} · ${loops} loop${loops > 1 ? 's' : ''}${tokenStr} · ${elapsed}s${providerStr}*\n`);
+            if (fbChain.length > 0) {
+                // Deduplicate chain by provider (show unique providers tried)
+                const seen = new Set();
+                const uniqueProviders = [];
+                for (const fb of fbChain) {
+                    if (!seen.has(fb.provider)) {
+                        seen.add(fb.provider);
+                        uniqueProviders.push(fb.provider);
+                    }
+                }
+                const chainStr = uniqueProviders.map(p => p === lastProvider ? `**${p}** ✓` : `~~${p}~~ ✗`).join(' → ');
+                const wasPreferred = lastProvider === providerKey;
+                const prefLabel = wasPreferred ? '' : ` · preferred: ${preferredStr}`;
+                response.markdown(`*⚡ Provider chain: ${chainStr}${prefLabel}*\n`);
+            }
+            else if (actualStr && actualStr !== preferredStr) {
+                response.markdown(`*⚡ Preferred: ${preferredStr} · Used: ${actualStr}*\n`);
+            }
+            if (loops >= maxLoops) {
+                response.markdown(`\n\n*⚠️ Reached max loops (${maxLoops})*\n`);
+            }
+            // Show LOC stats for THIS chat turn (delta)
+            const locDelta = (0, locTracker_1.getSessionDelta)(locStart);
+            if (locDelta.calls > 0) {
+                response.markdown(`\n*✏️ Session LOC: ${locDelta.written} written, ${locDelta.edited} edited, ${locDelta.net} net*\n`);
+            }
+            // Flush LOC events after each conversation turn
+            (0, locTracker_1.flushEvents)();
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            response.markdown(`\n\n*❌ Error:* ${msg}`);
+        }
+    });
+    participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'icon.svg');
+    context.subscriptions.push(participant);
+    console.log(`[Resonant AI] Registered chat participant with ${toolDefinitions_1.TOOL_COUNT} local tools`);
+    // Commands
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.openChat', () => {
+        // Open the built-in chat panel
+        vscode.commands.executeCommand('workbench.action.chat.open');
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.newConversation', () => {
+        vscode.commands.executeCommand('workbench.action.chat.newChat');
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.login', () => {
+        authService.login();
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.logout', () => {
+        authService.logout();
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.setApiKey', async () => {
+        const key = await vscode.window.showInputBox({
+            prompt: 'Enter your Resonant API key or JWT token',
+            password: true,
+            placeHolder: 'RG-xxxx or JWT token',
+        });
+        if (key) {
+            await authService.setTokenManually(key);
+        }
+    }));
+    // ── Local LLM Commands ──
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.localLLM.testConnection', async () => {
+        const localConfig = vscode.workspace.getConfiguration('resonant.localLLM');
+        const localUrl = localConfig.get('url', 'http://localhost:11434');
+        const statusMsg = vscode.window.setStatusBarMessage(`$(loading~spin) Testing connection to ${localUrl}...`);
+        try {
+            const result = await (0, localLLMProvider_1.testLocalConnection)(localUrl);
+            statusMsg.dispose();
+            if (result.ok) {
+                const models = await (0, localLLMProvider_1.listLocalModels)(localUrl);
+                const modelList = models.map(m => `${m.name}${m.parameterSize ? ' (' + m.parameterSize + ')' : ''}`).join(', ');
+                vscode.window.showInformationMessage(`✅ Connected to ${result.server} at ${localUrl}\n${models.length} model${models.length !== 1 ? 's' : ''}: ${modelList || 'none found'}`);
+                // Auto-enable if not already
+                if (!localConfig.get('enabled', false)) {
+                    const enable = await vscode.window.showInformationMessage('Local LLM is not enabled. Enable it now?', 'Yes', 'No');
+                    if (enable === 'Yes') {
+                        await localConfig.update('enabled', true, vscode.ConfigurationTarget.Global);
+                        lmProvider.refreshModels();
+                        vscode.window.showInformationMessage('Local LLM mode enabled! Select a local model from the model picker.');
+                    }
+                }
+            }
+            else {
+                vscode.window.showErrorMessage(`❌ Cannot connect to ${localUrl}: ${result.error}\n\nMake sure Ollama is running: ollama serve`);
+            }
+        }
+        catch (err) {
+            statusMsg.dispose();
+            vscode.window.showErrorMessage(`Connection test failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.localLLM.listModels', async () => {
+        const localUrl = vscode.workspace.getConfiguration('resonant.localLLM').get('url', 'http://localhost:11434');
+        try {
+            const models = await (0, localLLMProvider_1.listLocalModels)(localUrl);
+            if (models.length === 0) {
+                vscode.window.showWarningMessage(`No models found at ${localUrl}. Pull a model with: ollama pull llama3.1:8b`);
+                return;
+            }
+            const items = models.map(m => ({
+                label: m.name,
+                description: [m.parameterSize, m.quantization, m.family].filter(Boolean).join(' · '),
+                detail: m.size > 0 ? `${(m.size / 1e9).toFixed(1)} GB` : undefined,
+            }));
+            const picked = await vscode.window.showQuickPick(items, {
+                title: `Local Models (${localUrl})`,
+                placeHolder: 'Select a model to set as default',
+            });
+            if (picked) {
+                await vscode.workspace.getConfiguration('resonant.localLLM').update('model', picked.label, vscode.ConfigurationTarget.Global);
+                lmProvider.refreshModels();
+                vscode.window.showInformationMessage(`Default local model set to: ${picked.label}`);
+            }
+        }
+        catch (err) {
+            vscode.window.showErrorMessage(`Failed to list models: ${err instanceof Error ? err.message : String(err)}\n\nIs Ollama running? Start it with: ollama serve`);
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.localLLM.selectModel', async () => {
+        // Same as listModels — alias for discoverability
+        vscode.commands.executeCommand('resonant.localLLM.listModels');
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.localLLM.toggle', async () => {
+        const localConfig = vscode.workspace.getConfiguration('resonant.localLLM');
+        const current = localConfig.get('enabled', false);
+        await localConfig.update('enabled', !current, vscode.ConfigurationTarget.Global);
+        lmProvider.refreshModels();
+        vscode.window.showInformationMessage(`Local LLM mode: ${!current ? 'ON ✅' : 'OFF'}`);
+    }));
+    // Profile / Account Settings webview
+    const profileProvider = new profileWebview_1.ProfileWebviewProvider(context, async () => authService.getToken());
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.openProfile', () => {
+        profileProvider.show();
+    }));
+    // Status bar settings panel (Windsurf-style)
+    const settingsPanel = new settingsPanel_1.SettingsPanelProvider(context, async () => authService.getToken(), () => authService.getAuthDomain());
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.openSettingsPanel', () => {
+        settingsPanel.show();
+    }), { dispose: () => settingsPanel.dispose() });
+    settingsPanel.updateStatusBar();
+    // Agent provider — fetches user agents from backend and registers as chat participants
+    const agentProvider = new agentProvider_1.ResonantAgentProvider(context, async () => authService.getToken());
+    context.subscriptions.push({ dispose: () => agentProvider.dispose() });
+    agentProvider.activate();
+    // Register custom Resonant AI Chat sidebar (shows SSE flow, tool calls, timing)
+    const chatViewProvider = new chatViewProvider_1.ResonantChatViewProvider(context, authService);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('resonant.chatView', chatViewProvider));
+    console.log('[Resonant AI] Registered Resonant AI Chat sidebar view');
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.toggleChatView', () => {
+        vscode.commands.executeCommand('resonant.chatView.focus');
+    }));
+    // Listen for auth changes — update status bar, re-fetch agents & models
+    context.subscriptions.push(authService.onDidChangeAuth(async (loggedIn) => {
+        console.log(`[Resonant AI] Auth changed: loggedIn=${loggedIn}`);
+        await settingsPanel.onAuthChanged();
+        chatViewProvider.onAuthChanged(loggedIn);
+        if (loggedIn) {
+            lmProvider.refreshModels();
+            agentProvider.refreshAgents();
+        }
+    }));
+    // Command to refresh providers/agents manually
+    context.subscriptions.push(vscode.commands.registerCommand('resonant.refreshProviders', () => {
+        lmProvider.refreshModels();
+        agentProvider.refreshAgents();
+        vscode.window.showInformationMessage('Resonant AI: Refreshing providers and agents...');
+    }));
+    // Initialize LOC tracker + update checker
+    const initApiUrl = vscode.workspace.getConfiguration('resonant').get('apiUrl', '') || authService.getAuthDomain();
+    const initToken = authService.getToken();
+    if (initToken) {
+        (0, locTracker_1.initLocTracker)(initApiUrl, initToken, 'pending', '');
+        (0, updateChecker_1.initUpdateChecker)(context, initApiUrl, initToken);
+    }
+    (0, updateChecker_1.registerCommands)(context);
+    // Update LOC/update auth when user logs in
+    context.subscriptions.push(authService.onDidChangeAuth(async (loggedIn) => {
+        if (loggedIn) {
+            const url = vscode.workspace.getConfiguration('resonant').get('apiUrl', '') || authService.getAuthDomain();
+            const token = authService.getToken();
+            (0, locTracker_1.updateLocAuth)(url, token);
+            (0, updateChecker_1.updateCheckerAuth)(url, token);
+            (0, locTracker_1.initLocTracker)(url, token, 'user', '');
+        }
+    }));
+    console.log('[Resonant AI] Extension activated — integrated into built-in Chat.');
+}
+function deactivate() {
+    (0, locTracker_1.disposeLocTracker)();
+    (0, updateChecker_1.disposeUpdateChecker)();
+    (0, interactiveTerminal_1.disposeAllSessions)();
+    console.log('[Resonant AI] Extension deactivated.');
+}

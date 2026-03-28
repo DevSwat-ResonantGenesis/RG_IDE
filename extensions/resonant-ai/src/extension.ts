@@ -69,6 +69,72 @@ function summarizeCVForServer(toolName: string, raw: string): string {
 	}
 }
 
+const TERMINAL_TOOLS = new Set(['run_command', 'terminal_command', 'execute_command']);
+const GREP_TOOLS = new Set(['grep_search', 'find_by_name', 'code_search']);
+/** Format tool execution result as visible chat output (like Windsurf terminal streaming) */
+function formatToolOutputForChat(toolName: string, raw: string): string {
+	try {
+		const d = JSON.parse(raw);
+		if (d.error) { return `\`\`\`\n❌ ${d.error}\n\`\`\`\n`; }
+		// Terminal / shell commands — show stdout + stderr
+		if (TERMINAL_TOOLS.has(toolName) || toolName === 'git_status' || toolName === 'git_diff' || toolName === 'git_log') {
+			const out = (d.stdout || '').trim();
+			const err = (d.stderr || '').trim();
+			if (!out && !err) { return '```\n(no output)\n```\n'; }
+			let block = '```\n';
+			if (out) { block += out.slice(0, 4000) + (out.length > 4000 ? '\n... (truncated)' : '') + '\n'; }
+			if (err) { block += '⚠ ' + err.slice(0, 1000) + '\n'; }
+			block += '```\n';
+			return block;
+		}
+		// Grep / search results
+		if (GREP_TOOLS.has(toolName)) {
+			const out = (d.stdout || d.output || '').trim();
+			if (d.matches) { return `\`\`\`\n${JSON.stringify(d.matches, null, 2).slice(0, 3000)}\n\`\`\`\n`; }
+			if (out) { return `\`\`\`\n${out.slice(0, 3000)}\n\`\`\`\n`; }
+			return '';
+		}
+		// File read — show preview
+		if (toolName === 'file_read') {
+			const content = d.content || d.text || '';
+			if (content) {
+				const ext = (d.path || '').split('.').pop() || '';
+				const preview = content.slice(0, 2000) + (content.length > 2000 ? '\n... (truncated)' : '');
+				return `\`\`\`${ext}\n${preview}\n\`\`\`\n`;
+			}
+			return '';
+		}
+		// File write/edit — show confirmation
+		if (toolName === 'file_write') { return `> ✏️ Wrote ${d.bytes_written || '?'} bytes\n`; }
+		if (toolName === 'file_edit' || toolName === 'multi_edit') { return `> ✏️ Edit applied\n`; }
+		// Background command status
+		if (d.command_id && d.status) {
+			const out = (d.output || '').trim();
+			let block = `> Status: **${d.status}**\n`;
+			if (out) { block += `\`\`\`\n${out.slice(0, 2000)}\n\`\`\`\n`; }
+			return block;
+		}
+		// Code Visualizer / Janitor — show key stats
+		if (CV_TOOLS.has(toolName)) {
+			if (d.health_indicators) {
+				const hi = d.health_indicators;
+				return `> ${hi.status_emoji || '🔍'} Health: **${hi.health_score}%** — ${hi.status}\n> Nodes: ${d.metrics?.total_nodes || '?'} | Proposals: ${(d.proposals || []).length}\n`;
+			}
+			if (d.stats) {
+				const s = d.stats;
+				return `> 📊 Files: ${s.total_files || '?'} | Functions: ${s.total_functions || '?'} | Endpoints: ${s.total_endpoints || '?'} | Broken: ${s.broken_connections || 0}\n`;
+			}
+		}
+		return '';
+	} catch {
+		// Non-JSON output (plain text from some tools)
+		if (raw && raw.length > 0 && raw.length < 5000) {
+			return `\`\`\`\n${raw.slice(0, 3000)}\n\`\`\`\n`;
+		}
+		return '';
+	}
+}
+
 /** POST tool result back to server for the server-side agent loop */
 function postToolResult(
 	apiUrl: string,
@@ -298,7 +364,16 @@ function processServerAgentLoop(
 									const isError = CV_TOOLS.has(toolName)
 										? toolResult.startsWith('{"error"')
 										: toolResult.includes('"error"');
-									if (!isBackground) { chatResponse.markdown(`> ${isError ? '❌' : '✅'} **${toolTime}s**\n`); }
+									if (!isBackground) {
+										chatResponse.markdown(`> ${isError ? '❌' : '✅'} **${toolTime}s**\n`);
+										// Render tool output in chat (terminal stdout, grep matches, file content, etc.)
+										const outputBlock = formatToolOutputForChat(toolName, toolResult);
+										if (outputBlock) { chatResponse.markdown(outputBlock); }
+									} else {
+										// Background tools — show brief summary so user sees results
+										const bgOutput = formatToolOutputForChat(toolName, toolResult);
+										if (bgOutput) { chatResponse.markdown(`\n> 🔄 Background: **${toolName.replace(/_/g, ' ')}**\n${bgOutput}`); }
+									}
 
 									// Track LOC
 									if (['file_write', 'file_edit', 'multi_edit'].includes(toolName) && !isError) {
@@ -339,6 +414,18 @@ function processServerAgentLoop(
 
 							case 'tool_done':
 								break;
+
+							case 'tool_output': {
+								// Server-side tool result preview — render in chat so user sees server-side execution output
+								const outputName = p.name || '';
+								const preview = p.preview || '';
+								if (preview) {
+									chatResponse.markdown(`\n> 🖥️ Server: **${outputName.replace(/_/g, ' ')}**\n`);
+									const serverOutput = formatToolOutputForChat(outputName, preview);
+									if (serverOutput) { chatResponse.markdown(serverOutput); }
+								}
+								break;
+							}
 
 							case 'stats':
 								if (Array.isArray(p.fallback_chain)) {

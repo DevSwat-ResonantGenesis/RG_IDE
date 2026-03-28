@@ -226,7 +226,11 @@ def cmd_graph_janitor(path, args):
     isolated_nodes = max(total_nodes - len(connected), 0)
     orphan_endpoints = sum(1 for n in nodes_list if isinstance(n, dict) and n.get("type") == "api_endpoint" and edge_counts.get(n.get("id", ""), 0) == 0)
 
-    health_score = max(0, min(100, int(round((reachability_score * 0.7) + ((100.0 - drift_score) * 0.3)))))
+    # Factor broken connections into health: each broken conn reduces score
+    total_conns = len(connections) or 1
+    broken_ratio = sum(1 for c in connections if isinstance(c, dict) and str(c.get("status", "")) in ("broken", "dead")) / total_conns
+    conn_health = max(0.0, 100.0 - (broken_ratio * 200.0))  # 50% broken = 0 health from connections
+    health_score = max(0, min(100, int(round((reachability_score * 0.5) + ((100.0 - drift_score) * 0.2) + (conn_health * 0.3)))))
     if health_score >= 80:
         status, emoji = "healthy", "🟢"
     elif health_score >= 60:
@@ -264,16 +268,23 @@ def cmd_graph_janitor(path, args):
         else:
             continue
         pname = "TAG_DEAD"
-        if "forbidden" in vtype:
+        if "broken" in vtype or "broken_connection" in vtype:
+            pname = "FIX_BROKEN_CONNECTION"
+        elif "forbidden" in vtype:
             pname = "ISOLATE_DEPENDENCY"
         elif "isolated" in vtype:
             pname = "REVIEW_ORPHAN"
         proposals.append({"proposal": pname, "risk": sev_risk.get(sev, 4.0), "reason": msg, "expected_gain": sug, "root": nid})
 
+    # Count broken connections for metrics
+    broken_conns = sum(1 for c in connections if isinstance(c, dict) and str(c.get("status", "")) in ("broken", "dead"))
+    if broken_conns > 0 and not any("broken" in r.lower() for r in recs):
+        recs.insert(0, f"{broken_conns} broken connections detected. Review import resolution and remove dead references.")
+
     return {
         "agent": "Graph Janitor Agent (local)",
         "health_indicators": {"status": status, "status_emoji": emoji, "health_score": health_score, "recommendations": recs},
-        "metrics": {"reachability_score": round(reachability_score, 1), "unreachable_nodes": unreachable_nodes, "isolated_nodes": isolated_nodes, "orphan_endpoints": orphan_endpoints, "total_nodes": total_nodes},
+        "metrics": {"reachability_score": round(reachability_score, 1), "unreachable_nodes": unreachable_nodes, "isolated_nodes": isolated_nodes, "orphan_endpoints": orphan_endpoints, "broken_connections": broken_conns, "total_nodes": total_nodes},
         "proposals": proposals,
     }
 
