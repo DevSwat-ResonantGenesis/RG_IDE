@@ -196,11 +196,33 @@ function formatToolOutputForChat(toolName, raw) {
             }
             return block;
         }
-        // Code Visualizer / Janitor — show key stats
+        // Code Visualizer / Janitor — show key stats + full proposals
         if (CV_TOOLS.has(toolName)) {
             if (d.health_indicators) {
                 const hi = d.health_indicators;
-                return `> ${hi.status_emoji || '🔍'} Health: **${hi.health_score}%** — ${hi.status}\n> Nodes: ${d.metrics?.total_nodes || '?'} | Proposals: ${(d.proposals || []).length}\n`;
+                const m = d.metrics || {};
+                let out = `> ${hi.status_emoji || '🔍'} Health: **${hi.health_score}%** — ${hi.status}\n`;
+                out += `> Nodes: ${m.total_nodes || '?'} | Broken: ${m.broken_connections || 0} | Unreachable: ${m.unreachable_nodes || 0} | Orphans: ${m.orphan_endpoints || 0}\n`;
+                // Show recommendations
+                const recs = hi.recommendations || [];
+                if (recs.length) {
+                    out += `\n**Recommendations:**\n`;
+                    for (const r of recs) {
+                        out += `- ${r}\n`;
+                    }
+                }
+                // Show ALL proposals with details
+                const props = d.proposals || [];
+                if (props.length) {
+                    out += `\n**Proposals (${props.length}):**\n`;
+                    for (const p of props) {
+                        out += `- **${p.proposal}** (risk: ${p.risk}) — ${(p.reason || '').slice(0, 150)}\n`;
+                        if (p.expected_gain) {
+                            out += `  > Fix: ${(p.expected_gain || '').slice(0, 120)}\n`;
+                        }
+                    }
+                }
+                return out;
             }
             if (d.stats) {
                 const s = d.stats;
