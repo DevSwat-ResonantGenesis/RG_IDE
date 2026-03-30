@@ -20,7 +20,7 @@ import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';
 import { ResonantInlineCompletionProvider, setInlineCompletionAuth, setInlineCompletionModel, setInlineCompletionEnabled } from './inlineCompletionProvider';
-import { testLocalConnection, listLocalModels } from './localLLMProvider';
+import { testLocalConnection, listLocalModels, callLocalCompletions } from './localLLMProvider';
 import { disposeAllSessions as disposeTerminalSessions } from './interactiveTerminal';
 
 /** Compact summary of Code Visualizer results for the LLM.
@@ -186,6 +186,49 @@ function postToolResult(
 			res.on('end', () => {
 				if (res.statusCode && res.statusCode < 400) { resolve(); }
 				else { reject(new Error(`Tool result POST ${res.statusCode}: ${body.slice(0, 200)}`)); }
+			});
+			res.on('error', reject);
+		});
+		req.on('error', reject);
+		req.write(payload);
+		req.end();
+	});
+}
+
+/** POST local LLM (Ollama) result back to server for the LLM proxy pattern */
+function postLLMResult(
+	apiUrl: string,
+	authToken: string,
+	sessionId: string,
+	result: { content: string; tool_calls: any[]; usage: any; model: string; error?: string },
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const url = new URL(`${apiUrl}/api/v1/ide/agent-stream/${sessionId}/llm-result`);
+		const payload = JSON.stringify(result);
+		const isHttps = url.protocol === 'https:';
+		const reqModule = isHttps ? https : http;
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+			'Content-Length': String(Buffer.byteLength(payload)),
+		};
+		if (authToken.startsWith('RG-')) {
+			headers['x-api-key'] = authToken;
+		} else {
+			headers['Authorization'] = `Bearer ${authToken}`;
+			headers['Cookie'] = `rg_access_token=${authToken}`;
+		}
+		const req = reqModule.request({
+			hostname: url.hostname,
+			port: url.port || (isHttps ? 443 : 80),
+			path: url.pathname,
+			method: 'POST',
+			headers,
+		}, (res) => {
+			let body = '';
+			res.on('data', (c: Buffer) => { body += c.toString(); });
+			res.on('end', () => {
+				if (res.statusCode && res.statusCode < 400) { resolve(); }
+				else { reject(new Error(`LLM result POST ${res.statusCode}: ${body.slice(0, 200)}`)); }
 			});
 			res.on('error', reject);
 		});
@@ -424,6 +467,56 @@ function processServerAgentLoop(
 								} else {
 									chatResponse.progress(`Fallback #${attempt}: trying ${p.provider}/${p.model}...`);
 								}
+								break;
+							}
+
+							case 'llm_proxy_request': {
+								// Server asks client to call local Ollama and post result back
+								const proxySessionId = p.session_id;
+								const proxyModel = p.model || '';
+								const proxyUrl = p.url || 'http://localhost:11434';
+								const proxyMessages = p.messages || [];
+								const proxyTools = p.tools || [];
+								chatResponse.progress(`Calling local Ollama (${proxyModel})...`);
+
+								(async () => {
+									try {
+										const localConfig = {
+											enabled: true,
+											url: proxyUrl,
+											model: proxyModel,
+											contextLength: p.max_tokens || 16384,
+										};
+										const llmResult = await callLocalCompletions(
+											localConfig,
+											proxyMessages,
+											proxyTools,
+											(text: string) => {
+												// Stream text chunks to chat UI as Ollama generates them
+												chatResponse.markdown(text);
+											},
+										);
+										await postLLMResult(apiUrl, authToken, proxySessionId, {
+											content: llmResult.content,
+											tool_calls: llmResult.tool_calls,
+											usage: llmResult.usage || {},
+											model: llmResult.model,
+										});
+									} catch (err) {
+										console.error('[Resonant AI] Local Ollama proxy failed:', err);
+										try {
+											await postLLMResult(apiUrl, authToken, proxySessionId, {
+												content: '',
+												tool_calls: [],
+												usage: {},
+												model: proxyModel,
+												error: err instanceof Error ? err.message : String(err),
+											});
+										} catch (postErr) {
+											console.error('[Resonant AI] Failed to POST LLM error result:', postErr);
+										}
+									}
+								})().catch(err => console.error('[Resonant AI] LLM proxy error:', err));
 								break;
 							}
 
