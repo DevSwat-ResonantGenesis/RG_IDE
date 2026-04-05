@@ -126,42 +126,239 @@ Resonant IDE uses a **thin client + server orchestration** model. The desktop ap
 
 ---
 
-## 59 Tools (11 Categories)
+## Full Tool Catalog
 
 Tool **definitions** and **selection** are managed server-side. Tool **execution** happens locally on your machine — the AI can read your files, run your commands, and manage your git without any code leaving your machine unless you explicitly share it.
 
-### Core (12 tools)
-`file_read` · `file_write` · `file_edit` · `multi_edit` · `file_list` · `file_delete` · `file_move` · `grep_search` · `find_by_name` · `run_command` · `command_status` · `read_terminal`
+The IDE AI has access to **both local tools** (executed via Electron IPC on your machine) and **cloud/platform tools** (executed on the server). Total: **137+ tools across 17 categories**.
 
-### Git (7 tools)
-`git_status` · `git_diff` · `git_log` · `git_commit` · `git_push` · `git_pull` · `git_branch`
+---
 
-### Web (6 tools)
-`search_web` · `read_url_content` · `view_content_chunk` · `browser_check` · `browser_preview` · `read_browser_logs`
+### Local Tools (executed on YOUR machine)
 
-### Codebase Intelligence (8 tools)
-`code_visualizer_scan` · `code_visualizer_functions` · `code_visualizer_trace` · `code_visualizer_governance` · `code_visualizer_graph` · `code_visualizer_pipeline` · `code_visualizer_filter` · `code_visualizer_by_type`
+#### Filesystem & Editing (6 tools)
+| Tool | Description |
+|------|-------------|
+| `file_read` | Read file with optional offset/limit for large files |
+| `file_write` | Create or overwrite a file with new content |
+| `file_edit` | Replace an exact unique string in a file (surgical edits) |
+| `multi_edit` | Atomic batch edits on one file — multiple find/replace in sequence |
+| `file_list` | List directory contents with sizes and types |
+| `file_delete` | Delete a file or directory |
 
-### Interactive Terminal (8 tools)
+#### Search & Navigation (2 tools)
+| Tool | Description |
+|------|-------------|
+| `grep_search` | Search text patterns across files via ripgrep — regex, case-insensitive, glob filters |
+| `find_by_name` | Find files by name glob pattern with depth limits and type filters |
+
+#### Terminal & Commands (2 tools)
+| Tool | Description |
+|------|-------------|
+| `run_command` | Run any shell command (blocking or async) with working directory control |
+| `command_status` | Check background command status and read output |
+
+#### Git Operations (5 tools)
+| Tool | Description |
+|------|-------------|
+| `git_clone` | Clone a Git repository to local path |
+| `git_branch` | Create, list, or switch Git branches |
+| `git_merge` | Merge a branch into current branch |
+| `git_push` | Push commits to remote |
+| `git_pull` | Pull changes from remote |
+
+#### Interactive Terminal (8 tools)
 `terminal_create` · `terminal_send` · `terminal_send_raw` · `terminal_read` · `terminal_wait` · `terminal_list` · `terminal_close` · `terminal_clear`
 
-### Planning & Memory (6 tools)
-`todo_list` · `ask_user` · `save_memory` · `read_memory` · `create_memory` · `code_search`
-
-### Notebooks (2 tools)
+#### Notebooks (2 tools)
 `notebook_read` · `notebook_edit`
 
-### Platform API (2 tools)
-`platform_api_search` · `platform_api_call` — access to **433 backend endpoints** across 17 services
-
-### Deploy (2 tools)
+#### Deploy (2 tools)
 `ssh_run` · `deploy_web_app`
 
-### Trajectory (1 tool)
+#### Trajectory (1 tool)
 `trajectory_search` — semantic search over conversation history
 
-### Inline Completions
+#### Inline Completions
 Real-time ghost text code suggestions via FIM (Fill-in-the-Middle) across 30+ languages.
+
+---
+
+### Cloud / Platform Tools (executed on the server via your JWT)
+
+#### Search & Web (11 tools)
+| Tool | Description |
+|------|-------------|
+| `web_search` | Search the web for current information, news, articles, documentation |
+| `fetch_url` | Fetch and read content from any URL |
+| `read_webpage` | Read a webpage and extract clean structured content |
+| `read_many_pages` | Read multiple web pages in parallel (max 5) |
+| `reddit_search` | Search Reddit for discussions and recommendations |
+| `image_search` | Search for images on the web |
+| `news_search` | Search latest news articles |
+| `places_search` | Search for businesses on Google Maps |
+| `youtube_search` | Search YouTube for videos |
+| `deep_research` | Deep multi-source research via Perplexity AI |
+| `wikipedia` | Search and read Wikipedia articles |
+
+#### Code Visualizer / SAST (8 tools)
+| Tool | Description |
+|------|-------------|
+| `code_visualizer_scan` | Full AST scan — functions, classes, endpoints, imports, pipelines, dead code detection |
+| `code_visualizer_functions` | List all functions and API endpoints in a project |
+| `code_visualizer_trace` | Trace dependency flow from any node through the codebase |
+| `code_visualizer_governance` | Architecture governance audit — reachability, drift detection, health score (0-100) |
+| `code_visualizer_graph` | Get full dependency graph as structured data |
+| `code_visualizer_pipeline` | Auto-detect and visualize pipeline flows |
+| `code_visualizer_filter` | Filter graph by file path, node type, or keyword |
+| `code_visualizer_by_type` | Get all nodes of a type — function, class, api_endpoint, service, file, import |
+
+#### Memory & Hash Sphere (9 tools)
+| Tool | Description |
+|------|-------------|
+| `memory_read` | Search user's long-term memory (cross-session, cross-machine) |
+| `memory_write` | Save information to long-term memory |
+| `memory_search` | Deep keyword + semantic search through memories |
+| `memory_stats` | Get memory usage stats |
+| `hash_sphere_search` | Search Hash Sphere anchors (blockchain-verified memories) |
+| `hash_sphere_anchor` | Create a new blockchain-verified memory point |
+| `hash_sphere_list_anchors` | List all user's Hash Sphere anchors |
+| `hash_sphere_hash` | Generate a Hash Sphere hash for content |
+| `hash_sphere_resonance` | Check resonance between two content pieces |
+
+#### Agents OS (24 tools)
+| Tool | Description |
+|------|-------------|
+| `agents_list` | List user's AI agents |
+| `agents_create` | Create a new AI agent |
+| `agents_start` | Start/run an agent |
+| `agents_stop` | Stop a running agent |
+| `agents_status` | Get agent config and status |
+| `agents_delete` | Delete an agent |
+| `agents_update` | Update agent config — name, goal, model, tools, etc. |
+| `agents_sessions` | List sessions/runs for an agent |
+| `agents_session_steps` | Get execution steps for a session |
+| `agents_session_trace` | Full execution trace — steps, waterfall, cost, safety flags |
+| `agents_metrics` | Get agent run metrics |
+| `agents_session_cancel` | Cancel a running session |
+| `workspace_snapshot` | Full overview of workspace |
+| `run_agent` | Directly run an agent with a goal |
+| `schedule_agent` | Set recurring schedule for an agent |
+| `present_options` | Present interactive options to the user |
+| `architect_plan` | Analyze a request and produce a JSON blueprint for agents |
+| `architect_create_agent` | Create a fully-configured agent from a blueprint |
+| `architect_assign_goal` | Assign a goal to an agent |
+| `architect_create_schedule` | Create a recurring schedule — cron or interval |
+| `architect_create_webhook` | Create a webhook trigger for an agent |
+| `architect_set_autonomy` | Set autonomy mode (governed, supervised, unbounded) |
+| `architect_list_available_tools` | List all tools available to assign to agents |
+| `architect_list_providers` | List available LLM providers and models |
+
+#### Media Generation (3 tools)
+| Tool | Description |
+|------|-------------|
+| `generate_image` | Generate an AI image from text (DALL-E) |
+| `generate_audio` | Generate speech from text (TTS) |
+| `generate_music` | Generate music from text description |
+
+#### Integrations (9 tools)
+| Tool | Description |
+|------|-------------|
+| `gmail_send` | Send email via Gmail |
+| `gmail_read` | Read recent Gmail inbox |
+| `slack_send` | Send Slack message |
+| `slack_read` | Read Slack channel messages |
+| `google_calendar` | Google Calendar: list/create events, check availability |
+| `google_drive` | Google Drive: list/search/read/create files |
+| `figma` | Figma: list projects, get file, inspect components |
+| `sigma` | Sigma Computing dashboards and analytics |
+| `send_email` | Send email via SendGrid with HTML support |
+
+#### GitHub (9 tools)
+| Tool | Description |
+|------|-------------|
+| `github_create_repo` | Create GitHub repository |
+| `github_list_repos` | List GitHub repositories |
+| `github_list_files` | List files in a GitHub repo |
+| `github_download_file` | Download file from GitHub repo |
+| `github_upload_file` | Upload file to GitHub repo |
+| `github_pull_request` | Create or list pull requests |
+| `github_issue` | Create or list issues |
+| `github_commit` | Get commits in a repository |
+| `github_comment` | Comment on a GitHub issue or PR |
+
+#### State Physics Engine (21 tools)
+| Tool | Description |
+|------|-------------|
+| `sp_state` | Get full State Physics universe — nodes, edges, metrics, invariants |
+| `sp_reset` | Reset universe to initial state |
+| `sp_nodes` | List all nodes in Hash Sphere universe |
+| `sp_metrics` | Get universe metrics — node count, edge count, entropy |
+| `sp_identity` | Create identity node in Hash Sphere universe |
+| `sp_simulate` | Run N physics simulation steps |
+| `sp_galaxy` | Create galaxy-scale simulation |
+| `sp_demo` | Seed universe with demo data |
+| `sp_asymmetry` | Get asymmetry score — trust variance and Gini |
+| `sp_physics_config` | Update physics engine parameters |
+| `sp_entropy_config` | Update entropy engine parameters |
+| `sp_entropy_toggle` | Enable or disable entropy injection |
+| `sp_entropy_perturbation` | Inject perturbation event |
+| `sp_agent_spawn` | Spawn autonomous agent in universe |
+| `sp_agent_step` | Step the active agent once |
+| `sp_agent_kill` | Kill the active agent |
+| `sp_agents_spawn` | Spawn multiple agents |
+| `sp_agents_kill_all` | Kill all autonomous agents |
+| `sp_experiment` | Setup named experiment — zero_agent, stress_test, long_run |
+| `sp_memory_cost` | Set memory cost multiplier |
+| `sp_metrics_record` | Record metrics snapshot to history |
+
+#### Community / Rabbit (12 tools)
+| Tool | Description |
+|------|-------------|
+| `create_rabbit_post` | Create post in Rabbit community |
+| `list_rabbit_communities` | List all Rabbit communities |
+| `list_rabbit_posts` | List Rabbit posts |
+| `rabbit_vote` | Vote on Rabbit post/comment |
+| `create_rabbit_community` | Create a new Rabbit community |
+| `get_rabbit_community` | Get a Rabbit community by slug |
+| `search_rabbit_posts` | Search Rabbit posts by keyword |
+| `get_rabbit_post` | Get a specific Rabbit post by ID |
+| `delete_rabbit_post` | Delete a Rabbit post (owner only) |
+| `create_rabbit_comment` | Comment on a Rabbit post |
+| `list_rabbit_comments` | List comments on a Rabbit post |
+| `delete_rabbit_comment` | Delete a Rabbit comment (owner only) |
+
+#### Developer (4 tools)
+| Tool | Description |
+|------|-------------|
+| `execute_code` | Run code in Docker sandbox (Python, JavaScript, Bash) |
+| `http_request` | HTTP request to internal platform APIs |
+| `external_http_request` | HTTP request to any external URL |
+| `dev_tool` | Bridge to ED service for file ops, git, docker, testing |
+
+#### Utilities (6 tools)
+| Tool | Description |
+|------|-------------|
+| `weather` | Get current weather and 3-day forecast |
+| `stock_crypto` | Get real-time stock or crypto prices |
+| `generate_chart` | Generate chart image from data (bar, line, pie, radar, scatter) |
+| `visualize` | Generate SVG diagram inline in chat |
+| `get_current_time` | Get current date, time, timezone |
+| `get_system_info` | Get platform system info |
+
+#### Platform API (2 tools)
+| Tool | Description |
+|------|-------------|
+| `platform_api_search` | Search ~383 platform API endpoints by keyword or category |
+| `platform_api_call` | Call any authenticated platform API endpoint directly |
+
+#### Tool Management (4 tools)
+| Tool | Description |
+|------|-------------|
+| `create_tool` | Create custom HTTP tool stored in DB |
+| `list_tools` | List user's custom tools |
+| `delete_tool` | Delete a custom tool |
+| `update_tool` | Update an existing custom tool |
 
 ---
 
