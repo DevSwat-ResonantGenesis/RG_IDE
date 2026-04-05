@@ -352,13 +352,38 @@ Real-time ghost text code suggestions via FIM (Fill-in-the-Middle) across 30+ la
 | `platform_api_search` | Search ~383 platform API endpoints by keyword or category |
 | `platform_api_call` | Call any authenticated platform API endpoint directly |
 
-#### Tool Management (4 tools)
+#### Tool Management & Self-Creation (6 tools)
 | Tool | Description |
 |------|-------------|
-| `create_tool` | Create custom HTTP tool stored in DB |
-| `list_tools` | List user's custom tools |
+| `create_tool` | Create custom HTTP tool stored in DB. Set `is_shared=true` to make it platform-wide |
+| `list_tools` | List user's custom tools + all shared platform tools |
 | `delete_tool` | Delete a custom tool |
 | `update_tool` | Update an existing custom tool |
+| `auto_build_tool` | **LLM designs, validates (AST safety scan), and registers a new tool at runtime.** Describe what the tool should do and it will be auto-created |
+| `check_tool_exists` | Check if a capability exists as a tool. If not found, suggests using `auto_build_tool` |
+
+---
+
+## Self-Creating Tools — Agents Build What They Need
+
+The AI assistant can **create its own tools at runtime**. If it needs a capability that doesn't exist among the 137+ built-in tools, it can design, validate, and register a new tool — and that tool immediately becomes available to the entire platform.
+
+### How It Works
+
+1. **Check**: AI calls `check_tool_exists` to search 137+ built-in + all custom/shared tools
+2. **Design**: If not found, AI calls `auto_build_tool` with a natural language description
+3. **LLM Design**: An LLM generates the full tool spec (name, endpoint, method, params, category)
+4. **Safety Scan**: AST validation blocks SSRF, localhost, metadata endpoints, invalid schemas
+5. **Register**: Tool is stored in PostgreSQL, cached, and immediately available
+6. **Platform-Wide**: With `is_shared=true` (default), ALL users and agents across the platform can use it
+
+### Key Properties
+
+- **No restart needed** — tool is usable in the same conversation
+- **DB-persisted** — survives container restarts
+- **Category auto-assigned** — or use a custom category string
+- **Shared or private** — `is_shared=true` for platform-wide, `false` for user-only
+- **Full audit trail** — who created it, when, what category, active status
 
 ---
 
