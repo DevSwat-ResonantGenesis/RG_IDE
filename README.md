@@ -746,31 +746,46 @@ Mass imbalance              →    Flag architectural drift
 ## Getting Started
 
 ### Prerequisites
-- **Node.js 22.x** (22.22.0 recommended — see `.nvmrc`). **Do NOT use Node 23+ or 25+** — native modules (`tree-sitter`) fail to compile against newer V8 headers. If you have a newer Node installed, use `brew install node@22` and prefix commands with `PATH="/opt/homebrew/opt/node@22/bin:$PATH"`.
-- **npm** 10.x or later
+- **Node.js 22.22.0** (exact version required — see `.nvmrc`). **Node 23+ / 25+ WILL NOT WORK** — native modules (`tree-sitter`) fail to compile against newer V8 headers.
+- **npm** 10.x or later (comes with Node 22)
 - **Python** 3.10+ (for native module compilation and SAST analysis)
 - **Xcode Command Line Tools** (macOS) or **build-essential** (Linux) — required for native modules
 - A free account at [dev-swat.com](https://dev-swat.com) (required for AI features)
 
+> ⚠️ **Node version matters.** If `node -v` shows anything other than `v22.x`, the build **will fail**. Use nvm (below) to install the correct version.
+
 ### Build from Source
 
 ```bash
-# Clone
+# 1. Install nvm (Node Version Manager) — skip if you already have it
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.nvm/nvm.sh
+
+# 2. Clone the repo
 git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git
 cd RG_IDE
 
-# Install dependencies (takes 2-5 minutes)
+# 3. Install and use the EXACT Node version required (reads .nvmrc)
+nvm install
+nvm use
+
+# Verify — MUST show v22.22.0
+node -v
+
+# 4. Install dependencies (takes 2-5 minutes)
 npm install
 
-# Build the Resonant AI extension
+# 5. Build the Resonant AI extension
 cd extensions/resonant-ai && npm install && npx tsc -p tsconfig.json && cd ../..
 
-# Compile the full IDE (takes ~2 minutes)
+# 6. Compile the full IDE (takes ~2 minutes)
 npm run compile
 
-# Launch Resonant IDE
+# 7. Launch Resonant IDE
 ./scripts/code.sh
 ```
+
+> **Every time you open a new terminal** to work on RG_IDE, run `nvm use` inside the project directory first. It reads `.nvmrc` and switches to the correct Node version automatically.
 
 The `scripts/code.sh` launcher will:
 1. Download the correct Electron binary (first run only)
@@ -788,10 +803,15 @@ npm run compile
 ./scripts/code.sh
 ```
 
-**Compilation fails with errors**
-Ensure you have the correct Node.js version:
+**Compilation fails / `tree-sitter` build errors / `ternary-stream` not found**
+You're using the wrong Node.js version. This is the #1 cause of build failures:
 ```bash
-node --version  # Should be v22.x
+node -v  # MUST be v22.22.0 — NOT v23, v24, or v25
+nvm install   # installs the version from .nvmrc
+nvm use       # switches to it
+rm -rf node_modules
+npm install
+npm run compile
 ```
 
 **npm warnings about "Unknown project config"**
