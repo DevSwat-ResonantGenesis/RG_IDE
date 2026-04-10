@@ -754,6 +754,14 @@ Mass imbalance              →    Flag architectural drift
 
 > ⚠️ **Node version matters.** If `node -v` shows anything other than `v22.x`, the build **will fail**. Use nvm (below) to install the correct version.
 
+### One-Line Install (macOS)
+
+```bash
+bash -lc 'set -e; export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash; . "$NVM_DIR/nvm.sh"; [ -d RG_IDE ] || git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git; cd RG_IDE; nvm install; nvm use; npm install; cd extensions/resonant-ai && npm install && npx tsc -p tsconfig.json && cd ../..; npm run compile; ./scripts/code.sh'
+```
+
+> Important: always launch with `./scripts/code.sh`. Do not open the raw Electron bundle directly (`.build/electron/*.app`), or you'll get an empty Electron shell.
+
 ### Build from Source
 
 ```bash
