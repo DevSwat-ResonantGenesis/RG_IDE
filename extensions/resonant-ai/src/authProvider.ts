@@ -164,7 +164,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 			const data = JSON.parse(body);
 			return { email: data.email || '', name: data.full_name || data.display_name || data.name || data.email || '' };
 		} catch (err) {
-			console.error('[Resonant AI] Failed to fetch user profile:', err);
+			console.error('[DevSwat AI] Failed to fetch user profile:', err);
 			return { email: '', name: '' };
 		}
 	}

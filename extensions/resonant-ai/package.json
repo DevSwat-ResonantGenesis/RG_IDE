@@ -1,7 +1,7 @@
 {
   "name": "resonant-ai",
-  "displayName": "Resonant AI",
-  "description": "Resonant IDE AI Assistant — local agentic coding with 59 tools",
+  "displayName": "DevSwat AI",
+  "description": "DevSwat IDE AI Assistant — local agentic coding with 59 tools",
   "icon": "media/icon.png",
   "version": "0.1.0",
   "publisher": "resonant-genesis",
@@ -22,7 +22,7 @@
       "activitybar": [
         {
           "id": "resonant-ai-sidebar",
-          "title": "Resonant AI",
+          "title": "DevSwat AI",
           "icon": "$(sparkle)"
         }
       ]
@@ -32,83 +32,83 @@
         {
           "type": "webview",
           "id": "resonant.chatView",
-          "name": "Resonant AI Chat"
+          "name": "DevSwat AI Chat"
         }
       ]
     },
     "commands": [
       {
         "command": "resonant.openChat",
-        "title": "Open Resonant AI Chat",
-        "category": "Resonant AI",
+        "title": "Open DevSwat AI Chat",
+        "category": "DevSwat AI",
         "icon": "$(sparkle)"
       },
       {
         "command": "resonant.newConversation",
         "title": "New Conversation",
-        "category": "Resonant AI"
+        "category": "DevSwat AI"
       },
       {
         "command": "resonant.login",
         "title": "Sign In",
-        "category": "Resonant AI"
+        "category": "DevSwat AI"
       },
       {
         "command": "resonant.logout",
         "title": "Sign Out",
-        "category": "Resonant AI"
+        "category": "DevSwat AI"
       },
       {
         "command": "resonant.setApiKey",
         "title": "Set API Key",
-        "category": "Resonant AI"
+        "category": "DevSwat AI"
       },
       {
         "command": "resonant.openProfile",
         "title": "Profile & Account Settings",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(account)"
       },
       {
         "command": "resonant.openSettingsPanel",
         "title": "Settings Panel",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(settings-gear)"
       },
       {
         "command": "resonant.refreshProviders",
         "title": "Refresh Providers & Agents",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(refresh)"
       },
       {
         "command": "resonant.toggleChatView",
-        "title": "Toggle Resonant AI Chat",
-        "category": "Resonant AI",
+        "title": "Toggle DevSwat AI Chat",
+        "category": "DevSwat AI",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "resonant.localLLM.testConnection",
         "title": "Local LLM: Test Connection",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(plug)"
       },
       {
         "command": "resonant.localLLM.listModels",
         "title": "Local LLM: List Available Models",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(list-unordered)"
       },
       {
         "command": "resonant.localLLM.selectModel",
         "title": "Local LLM: Select Model",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(symbol-enum)"
       },
       {
         "command": "resonant.localLLM.toggle",
         "title": "Local LLM: Toggle On/Off",
-        "category": "Resonant AI",
+        "category": "DevSwat AI",
         "icon": "$(toggle-on)"
       }
     ],
@@ -116,8 +116,8 @@
       {
         "id": "resonant-genesis.resonant-ai.default",
         "name": "assistant",
-        "fullName": "Resonant AI",
-        "description": "Resonant Genesis AI Assistant",
+        "fullName": "DevSwat AI",
+        "description": "DevSwat AI Assistant",
         "isDefault": true,
         "modes": ["agent", "ask", "edit"],
         "locations": ["panel", "terminal", "editor"]
@@ -151,7 +151,7 @@
       ]
     },
     "configuration": {
-      "title": "Resonant AI",
+      "title": "DevSwat AI",
       "properties": {
         "resonant.apiUrl": {
           "type": "string",

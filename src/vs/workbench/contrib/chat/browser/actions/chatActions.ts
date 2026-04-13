@@ -1120,7 +1120,7 @@ export function registerChatActions() {
 		constructor() {
 			super({
 				id: 'workbench.action.chat.showExtensionsUsingCopilot',
-				title: localize2('showCopilotUsageExtensions', "Show Extensions using Resonant AI"),
+				title: localize2('showCopilotUsageExtensions', "Show Extensions using DevSwat AI"),
 				f1: true,
 				category: EXTENSIONS_CATEGORY,
 				precondition: ChatContextKeys.enabled
@@ -1163,7 +1163,7 @@ export function registerChatActions() {
 		constructor() {
 			super({
 				id: OPEN_CHAT_QUOTA_EXCEEDED_DIALOG,
-				title: localize('upgradeChat', "Upgrade Resonant AI Plan")
+				title: localize('upgradeChat', "Upgrade DevSwat AI Plan")
 			});
 		}
 
@@ -1195,14 +1195,14 @@ export function registerChatActions() {
 
 			await dialogService.prompt({
 				type: 'none',
-				message: localize('copilotQuotaReached', "Resonant AI Quota Reached"),
+				message: localize('copilotQuotaReached', "DevSwat AI Quota Reached"),
 				cancelButton: {
 					label: localize('dismiss', "Dismiss"),
 					run: () => { /* noop */ }
 				},
 				buttons: [
 					{
-						label: free ? localize('upgradePro', "Upgrade to Resonant Pro") : localize('upgradePlan', "Upgrade Resonant AI Plan"),
+						label: free ? localize('upgradePro', "Upgrade to Resonant Pro") : localize('upgradePlan', "Upgrade DevSwat AI Plan"),
 						run: () => {
 							const commandId = 'workbench.action.chat.upgradePlan';
 							telemetryService.publicLog2<WorkbenchActionExecutedEvent, WorkbenchActionExecutedClassification>('workbenchActionExecuted', { id: commandId, from: 'chat-dialog' });

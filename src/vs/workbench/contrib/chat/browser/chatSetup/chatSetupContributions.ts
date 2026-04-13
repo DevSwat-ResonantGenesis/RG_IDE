@@ -214,7 +214,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 
 		class ChatSetupTriggerAction extends Action2 {
 
-			static CHAT_SETUP_ACTION_LABEL = localize2('triggerChatSetup', "Use AI Features with Resonant AI...");
+			static CHAT_SETUP_ACTION_LABEL = localize2('triggerChatSetup', "Use AI Features with DevSwat AI...");
 
 			constructor() {
 				super({
@@ -422,7 +422,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			constructor() {
 				super({
 					id: 'workbench.action.chat.manageOverages',
-					title: localize2('manageOverages', "Manage Resonant AI Overages"),
+					title: localize2('manageOverages', "Manage DevSwat AI Overages"),
 					category: localize2('chat.category', 'Chat'),
 					f1: true,
 					precondition: ContextKeyExpr.and(

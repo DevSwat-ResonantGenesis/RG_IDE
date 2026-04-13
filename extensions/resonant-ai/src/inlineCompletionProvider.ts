@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Resonant AI Inline Completion Provider — Ghost text (Copilot-style) completions.
+ *  DevSwat AI Inline Completion Provider — Ghost text (Copilot-style) completions.
  *  Uses the same /api/v1/ide/completions backend endpoint with a FIM (fill-in-middle) prompt.
  *  Debounced to avoid excessive requests while typing.
  *--------------------------------------------------------------------------------------------*/

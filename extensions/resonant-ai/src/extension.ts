@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Resonant AI Extension — Thin Client
+ *  DevSwat AI Extension — Thin Client
  *  Registers as a Language Model Provider + Chat Participant for the built-in Chat panel.
  *  All orchestration (system prompt, tool selection, agentic loop) runs server-side.
  *  This client renders UI, discovers local LLM models, and executes tools locally.
@@ -453,9 +453,9 @@ function processServerAgentLoop(
 									try {
 										await postToolResult(apiUrl, authToken, sessionId, callId, toolName, serverResult);
 									} catch (err) {
-										console.error('[Resonant AI] Failed to POST tool result:', err);
+										console.error('[DevSwat AI] Failed to POST tool result:', err);
 									}
-								})().catch(err => console.error('[Resonant AI] Tool execution error:', err));
+								})().catch(err => console.error('[DevSwat AI] Tool execution error:', err));
 								break;
 							}
 
@@ -503,7 +503,7 @@ function processServerAgentLoop(
 											model: llmResult.model,
 										});
 									} catch (err) {
-										console.error('[Resonant AI] Local Ollama proxy failed:', err);
+										console.error('[DevSwat AI] Local Ollama proxy failed:', err);
 										try {
 											await postLLMResult(apiUrl, authToken, proxySessionId, {
 												content: '',
@@ -513,10 +513,10 @@ function processServerAgentLoop(
 												error: err instanceof Error ? err.message : String(err),
 											});
 										} catch (postErr) {
-											console.error('[Resonant AI] Failed to POST LLM error result:', postErr);
+											console.error('[DevSwat AI] Failed to POST LLM error result:', postErr);
 										}
 									}
-								})().catch(err => console.error('[Resonant AI] LLM proxy error:', err));
+								})().catch(err => console.error('[DevSwat AI] LLM proxy error:', err));
 								break;
 							}
 
@@ -599,7 +599,7 @@ function processServerAgentLoop(
 let authService: ResonantAuthService;
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('[Resonant AI] Extension activating...');
+	console.log('[DevSwat AI] Extension activating...');
 
 	// Register VS Code authentication provider (powers the Sign In button)
 	const authProvider = new ResonantAuthenticationProvider(context);
@@ -617,7 +617,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.lm.registerLanguageModelChatProvider('resonant', lmProvider),
 	);
-	console.log('[Resonant AI] Registered language model provider "resonant"');
+	console.log('[DevSwat AI] Registered language model provider "resonant"');
 
 	// Register inline completion provider (ghost text / Copilot-style completions)
 	const inlineProvider = new ResonantInlineCompletionProvider();
@@ -640,10 +640,10 @@ export function activate(context: vscode.ExtensionContext) {
 			const current = config.get<boolean>('inlineCompletions', true);
 			config.update('inlineCompletions', !current, vscode.ConfigurationTarget.Global);
 			setInlineCompletionEnabled(!current);
-			vscode.window.showInformationMessage(`Resonant AI inline completions: ${!current ? 'ON' : 'OFF'}`);
+			vscode.window.showInformationMessage(`DevSwat AI inline completions: ${!current ? 'ON' : 'OFF'}`);
 		})
 	);
-	console.log('[Resonant AI] Registered inline completion provider');
+	console.log('[DevSwat AI] Registered inline completion provider');
 
 	// Register as Chat Participant (agent) — full agentic loop with local tool execution.
 	// Calls /api/v1/ide/completions DIRECTLY with LOCAL_TOOL_DEFINITIONS.
@@ -683,7 +683,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Auth required for all modes — server handles orchestration even for local LLM
 			if (!authToken) {
-				response.markdown('⚠️ Please sign in first. Use **Resonant AI: Sign In** from the command palette or click the status bar.');
+				response.markdown('⚠️ Please sign in first. Use **DevSwat AI: Sign In** from the command palette or click the status bar.');
 				return;
 			}
 
@@ -738,6 +738,7 @@ export function activate(context: vscode.ExtensionContext) {
 					model_id: `resonant-${providerKey}-${modelName}`,
 					context: chatHistoryContext.slice(-40),
 					max_loops: maxLoops,
+					tools: LOCAL_TOOL_DEFINITIONS,
 				};
 				if (providerKey === 'ollama') {
 					const localLLMConfig = vscode.workspace.getConfiguration('resonant.localLLM');
@@ -804,7 +805,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'icon.svg');
 	context.subscriptions.push(participant);
-	console.log(`[Resonant AI] Registered chat participant with ${TOOL_COUNT} local tools`);
+	console.log(`[DevSwat AI] Registered chat participant with ${TOOL_COUNT} local tools`);
 
 	// Commands
 	context.subscriptions.push(
@@ -950,12 +951,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push({ dispose: () => agentProvider.dispose() });
 	agentProvider.activate();
 
-	// Register custom Resonant AI Chat sidebar (shows SSE flow, tool calls, timing)
+	// Register custom DevSwat AI Chat sidebar (shows SSE flow, tool calls, timing)
 	const chatViewProvider = new ResonantChatViewProvider(context, authService);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider('resonant.chatView', chatViewProvider),
 	);
-	console.log('[Resonant AI] Registered Resonant AI Chat sidebar view');
+	console.log('[DevSwat AI] Registered DevSwat AI Chat sidebar view');
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('resonant.toggleChatView', () => {
@@ -966,7 +967,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Listen for auth changes — update status bar, re-fetch agents & models
 	context.subscriptions.push(
 		authService.onDidChangeAuth(async (loggedIn) => {
-			console.log(`[Resonant AI] Auth changed: loggedIn=${loggedIn}`);
+			console.log(`[DevSwat AI] Auth changed: loggedIn=${loggedIn}`);
 			await settingsPanel.onAuthChanged();
 			chatViewProvider.onAuthChanged(loggedIn);
 			if (loggedIn) {
@@ -981,7 +982,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('resonant.refreshProviders', () => {
 			lmProvider.refreshModels();
 			agentProvider.refreshAgents();
-			vscode.window.showInformationMessage('Resonant AI: Refreshing providers and agents...');
+			vscode.window.showInformationMessage('DevSwat AI: Refreshing providers and agents...');
 		}),
 	);
 
@@ -1007,12 +1008,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	);
 
-	console.log('[Resonant AI] Extension activated — integrated into built-in Chat.');
+	console.log('[DevSwat AI] Extension activated — integrated into built-in Chat.');
 }
 
 export function deactivate() {
 	disposeLocTracker();
 	disposeUpdateChecker();
 	disposeTerminalSessions();
-	console.log('[Resonant AI] Extension deactivated.');
+	console.log('[DevSwat AI] Extension deactivated.');
 }

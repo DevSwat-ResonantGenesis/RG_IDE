@@ -188,7 +188,7 @@ export class ChatStatusDashboard extends DomWidget {
 
 		// Anonymous Indicator
 		else if (this.chatEntitlementService.anonymous && this.chatEntitlementService.sentiment.installed) {
-			addSeparator(localize('anonymousTitle', "Resonant AI Usage"));
+			addSeparator(localize('anonymousTitle', "DevSwat AI Usage"));
 
 			this.createQuotaIndicator(this.element, this._store, localize('quotaLimited', "Limited"), localize('chatsLabel', "Chat messages"), false);
 		}

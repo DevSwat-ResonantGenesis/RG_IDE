@@ -1,5 +1,5 @@
 /**
- * Tool definitions for Resonant AI — organized by CATEGORY for smart filtering.
+ * Tool definitions for DevSwat AI — organized by CATEGORY for smart filtering.
  * Only relevant tool categories are sent per query to reduce token waste.
  */
 type ToolDef = { type: 'function'; function: { name: string; description: string; parameters: Record<string, any> } };
@@ -51,7 +51,7 @@ const TOOLS_WEB: ToolDef[] = [
 // Output: full graph (nodes + connections), governance reports, pipeline traces, health scores.
 // Persists results to PostgreSQL + Hash Sphere memory. Credit-billed (200/analysis, 50/governance).
 const TOOLS_VISUALIZER: ToolDef[] = [
-  { type: F, function: { name: 'code_visualizer_scan', description: 'AST-scan project: discovers services, functions, classes, endpoints, imports, pipelines, dead code. Works with local paths or GitHub URLs.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Absolute path or GitHub URL' } }, required: ['path'] } } },
+  { type: F, function: { name: 'code_visualizer_scan', description: 'AST-scan project: discovers services, functions, classes, endpoints, imports, pipelines, dead code. Local filesystem paths only.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Absolute local filesystem path' } }, required: ['path'] } } },
   { type: F, function: { name: 'code_visualizer_functions', description: 'List all functions and API endpoints from a scan. Returns names, files, lines, decorators, HTTP routes.', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
   { type: F, function: { name: 'code_visualizer_trace', description: 'Trace dependency flow from any node (function/service/endpoint). Follows imports, calls, HTTP, DB queries both directions.', parameters: { type: 'object', properties: { path: { type: 'string' }, query: { type: 'string', description: 'Node name e.g. "login", "POST /api/users"' }, max_depth: { type: 'number' } }, required: ['path', 'query'] } } },
   { type: F, function: { name: 'code_visualizer_governance', description: 'Architecture governance: reachability analysis, forbidden deps, drift detection, CI pass/fail, health score 0-100.', parameters: { type: 'object', properties: { path: { type: 'string' }, drift_threshold: { type: 'number' } }, required: ['path'] } } },

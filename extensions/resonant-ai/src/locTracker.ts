@@ -1,5 +1,5 @@
 /**
- * LOC Tracker — counts lines of code written by Resonant AI and sends telemetry.
+ * LOC Tracker — counts lines of code written by DevSwat AI and sends telemetry.
  * Tracks file_write, file_edit, multi_edit tool calls.
  * Batches events and sends to /api/v1/ide/loc/track every 30 seconds.
  */

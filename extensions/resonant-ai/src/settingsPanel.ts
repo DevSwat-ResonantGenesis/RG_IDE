@@ -416,7 +416,7 @@ export class SettingsPanelProvider {
 			<!-- Settings Tab -->
 			<div class="content tab-content" id="tab-settings">
 				<div class="section">
-					<h3>Resonant AI</h3>
+					<h3>DevSwat AI</h3>
 					<div class="setting-row">
 						<div class="setting-label">API URL</div>
 						<div class="setting-value">${apiUrl}</div>
@@ -460,7 +460,7 @@ export class SettingsPanelProvider {
 			<div class="content tab-content" id="tab-shortcuts">
 				<div class="section">
 					<h3>AI Chat Shortcuts</h3>
-					<div class="shortcut-row"><kbd>Cmd+Shift+A</kbd><span>Open Resonant AI Chat</span></div>
+					<div class="shortcut-row"><kbd>Cmd+Shift+A</kbd><span>Open DevSwat AI Chat</span></div>
 					<div class="shortcut-row"><kbd>Cmd+L</kbd><span>New Chat</span></div>
 					<div class="shortcut-row"><kbd>Cmd+I</kbd><span>Inline Edit</span></div>
 					<div class="shortcut-row"><kbd>Cmd+Shift+I</kbd><span>Toggle Chat Panel</span></div>

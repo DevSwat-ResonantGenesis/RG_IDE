@@ -28,7 +28,7 @@ const defaultChat = {
 	privacyStatementUrl: product.defaultChatAgent?.privacyStatementUrl ?? ''
 };
 
-export const copilotSettingsMessage = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({0})"}', '{Locked="]({1})"}'] }, "{0} Resonant AI may show [public code]({1}) suggestions and use your data to improve the product. You can change these [settings]({2}) anytime.", defaultChat.provider.default.name, defaultChat.publicCodeMatchesUrl, defaultChat.manageSettingsUrl);
+export const copilotSettingsMessage = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({0})"}', '{Locked="]({1})"}'] }, "{0} DevSwat AI may show [public code]({1}) suggestions and use your data to improve the product. You can change these [settings]({2}) anytime.", defaultChat.provider.default.name, defaultChat.publicCodeMatchesUrl, defaultChat.manageSettingsUrl);
 
 class GettingStartedContentProviderRegistry {
 
@@ -224,9 +224,9 @@ export const startEntries: GettingStartedStartEntryContent = [
 
 const Button = (title: string, href: string) => `[${title}](${href})`;
 
-const CopilotStepTitle = localize('gettingStarted.copilotSetup.title', "Use Resonant AI — your local coding assistant");
-const CopilotDescription = localize({ key: 'gettingStarted.copilotSetup.description', comment: ['{Locked="["}', '{Locked="]({0})"}'] }, "You can use [Resonant AI]({0}) to generate code across multiple files, fix errors, ask questions about your code, and execute local tools using natural language.", defaultChat.documentationUrl ?? '');
-const CopilotTermsString = localize({ key: 'gettingStarted.copilotSetup.terms', comment: ['{Locked="]({2})"}', '{Locked="]({3})"}'] }, "By continuing with {0} Resonant AI, you agree to {1}'s [Terms]({2}) and [Privacy Statement]({3})", defaultChat.provider.default.name, defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
+const CopilotStepTitle = localize('gettingStarted.copilotSetup.title', "Use DevSwat AI — your local coding assistant");
+const CopilotDescription = localize({ key: 'gettingStarted.copilotSetup.description', comment: ['{Locked="["}', '{Locked="]({0})"}'] }, "You can use [DevSwat AI]({0}) to generate code across multiple files, fix errors, ask questions about your code, and execute local tools using natural language.", defaultChat.documentationUrl ?? '');
+const CopilotTermsString = localize({ key: 'gettingStarted.copilotSetup.terms', comment: ['{Locked="]({2})"}', '{Locked="]({3})"}'] }, "By continuing with {0} DevSwat AI, you agree to {1}'s [Terms]({2}) and [Privacy Statement]({3})", defaultChat.provider.default.name, defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
 const CopilotAnonymousButton = Button(localize('setupCopilotButton.setup', "Use AI Features"), `command:workbench.action.chat.triggerSetupAnonymousWithoutDialog`);
 const CopilotSignedOutButton = Button(localize('setupCopilotButton.setup', "Use AI Features"), `command:workbench.action.chat.triggerSetup`);
 const CopilotSignedInButton = Button(localize('setupCopilotButton.setup', "Use AI Features"), `command:workbench.action.chat.triggerSetup`);
@@ -243,7 +243,7 @@ function createCopilotSetupStep(id: string, button: string, when: string, includ
 		description,
 		when: `${when} && !chatSetupHidden`,
 		media: {
-			type: 'svg', altText: 'Resonant AI multi file edits', path: 'multi-file-edits.svg'
+			type: 'svg', altText: 'DevSwat AI multi file edits', path: 'multi-file-edits.svg'
 		},
 	};
 }

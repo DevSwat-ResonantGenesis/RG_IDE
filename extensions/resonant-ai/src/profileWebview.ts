@@ -75,7 +75,7 @@ export class ProfileWebviewProvider {
 			const profile = await this.fetchProfile(token);
 			this.panel.webview.html = this.getProfileHtml(profile);
 		} catch (err) {
-			console.error('[Resonant AI] Profile fetch error:', err);
+			console.error('[DevSwat AI] Profile fetch error:', err);
 			this.panel.webview.html = this.getErrorHtml(err instanceof Error ? err.message : String(err));
 		}
 	}

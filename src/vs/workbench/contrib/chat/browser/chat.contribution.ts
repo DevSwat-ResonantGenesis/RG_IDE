@@ -1235,7 +1235,7 @@ configurationRegistry.registerConfiguration({
 		},
 		[ChatConfiguration.AIDisabled]: {
 			type: 'boolean',
-			description: nls.localize('chat.disableAIFeatures', "Disable and hide built-in AI features provided by Resonant AI, including chat and inline suggestions."),
+			description: nls.localize('chat.disableAIFeatures', "Disable and hide built-in AI features provided by DevSwat AI, including chat and inline suggestions."),
 			default: false,
 			scope: ConfigurationScope.WINDOW
 		},
@@ -1250,7 +1250,7 @@ configurationRegistry.registerConfiguration({
 		},
 		[ChatConfiguration.GrowthNotificationEnabled]: {
 			type: 'boolean',
-			description: nls.localize('chat.growthNotification', "Controls whether to show a growth notification in the agent sessions view to encourage new users to try Resonant AI."),
+			description: nls.localize('chat.growthNotification', "Controls whether to show a growth notification in the agent sessions view to encourage new users to try DevSwat AI."),
 			default: false,
 			tags: ['experimental'],
 			experiment: {
@@ -1270,7 +1270,7 @@ configurationRegistry.registerConfiguration({
 		},
 		'chat.extensionUnification.enabled': {
 			type: 'boolean',
-			description: nls.localize('chat.extensionUnification.enabled', "Enables the unification of Resonant AI extensions. When enabled, all Resonant AI functionality is served from a single extension. When disabled, extensions operate independently."),
+			description: nls.localize('chat.extensionUnification.enabled', "Enables the unification of DevSwat AI extensions. When enabled, all DevSwat AI functionality is served from a single extension. When disabled, extensions operate independently."),
 			default: false,
 			tags: ['experimental'],
 			experiment: {

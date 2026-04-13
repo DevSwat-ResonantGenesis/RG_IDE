@@ -80,7 +80,7 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 		try {
 			providers = await this.fetchProviders();
 		} catch {
-			console.warn('[Resonant AI] Provider fetch failed, using fallback');
+			console.warn('[DevSwat AI] Provider fetch failed, using fallback');
 		}
 
 		// Also fetch user BYOK keys to add those providers
@@ -226,10 +226,10 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 					} as any);
 				}
 				if (localModels.length > 0) {
-					console.log(`[Resonant AI] Discovered ${localModels.length} local models from ${localUrl}`);
+					console.log(`[DevSwat AI] Discovered ${localModels.length} local models from ${localUrl}`);
 				}
 			} catch (err) {
-				console.warn(`[Resonant AI] Local LLM discovery failed (${localUrl}):`, err);
+				console.warn(`[DevSwat AI] Local LLM discovery failed (${localUrl}):`, err);
 				// Still add configured model as fallback
 				if (configuredModel) {
 					models.push({
@@ -254,7 +254,7 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 		}
 
 		const localCount = models.filter((m: any) => m.family === 'ollama').length;
-		console.log(`[Resonant AI] provideLanguageModelChatInformation returning ${models.length} models (${byokProviders.length} BYOK, ${localCount} local)`);
+		console.log(`[DevSwat AI] provideLanguageModelChatInformation returning ${models.length} models (${byokProviders.length} BYOK, ${localCount} local)`);
 		return models;
 	}
 
@@ -276,7 +276,7 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 		// System prompt — establishes identity and agentic capabilities
 		const systemPrompt: Record<string, unknown> = {
 			role: 'system',
-			content: `You are Resonant AI — a powerful agentic coding assistant inside Resonant IDE by Resonant Genesis.
+			content: `You are DevSwat AI — a powerful agentic coding assistant inside Resonant IDE by Resonant Genesis.
 You are pair-programming with the user. Your goal is to take action, not describe what you would do.
 
 ## COMMUNICATION
@@ -309,7 +309,7 @@ You are pair-programming with the user. Your goal is to take action, not describ
 - For destructive operations (file deletion, git push, deploy), confirm with the user first.
 - Never expose API keys or credentials in responses.
 
-You are Resonant AI by Resonant Genesis. Not GPT, Claude, Llama, or any other base model.`,
+You are DevSwat AI by Resonant Genesis. Not GPT, Claude, Llama, or any other base model.`,
 		};
 
 		// Convert VS Code messages to OpenAI format, prepend system prompt
@@ -477,10 +477,10 @@ You are Resonant AI by Resonant Genesis. Not GPT, Claude, Llama, or any other ba
 			const data = JSON.parse(body);
 			cachedProviders = data.providers || [];
 			cacheTimestamp = Date.now();
-			console.log(`[Resonant AI] Fetched ${cachedProviders!.length} providers:`, cachedProviders!.map(p => `${p.provider_key}=${p.status}`).join(', '));
+			console.log(`[DevSwat AI] Fetched ${cachedProviders!.length} providers:`, cachedProviders!.map(p => `${p.provider_key}=${p.status}`).join(', '));
 			return cachedProviders!;
 		} catch (err) {
-			console.error('[Resonant AI] Failed to fetch providers:', err);
+			console.error('[DevSwat AI] Failed to fetch providers:', err);
 			return cachedProviders || [];
 		}
 	}
