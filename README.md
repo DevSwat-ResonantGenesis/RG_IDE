@@ -1,6 +1,6 @@
 <div align="center">
 
-# Resonant IDE
+# DevSwat IDE
 
 ### The AI-Native Development Environment by Resonant Genesis
 
