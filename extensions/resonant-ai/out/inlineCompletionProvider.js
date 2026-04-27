@@ -38,7 +38,7 @@ exports.setInlineCompletionAuth = setInlineCompletionAuth;
 exports.setInlineCompletionModel = setInlineCompletionModel;
 exports.setInlineCompletionEnabled = setInlineCompletionEnabled;
 /*---------------------------------------------------------------------------------------------
- *  Resonant AI Inline Completion Provider — Ghost text (Copilot-style) completions.
+ *  DevSwat AI Inline Completion Provider — Ghost text (Copilot-style) completions.
  *  Uses the same /api/v1/ide/completions backend endpoint with a FIM (fill-in-middle) prompt.
  *  Debounced to avoid excessive requests while typing.
  *--------------------------------------------------------------------------------------------*/
@@ -222,3 +222,4 @@ ${suffix.slice(0, 500) ? `=== CODE AFTER CURSOR ===\n${suffix.slice(0, 500)}` : 
         req.end();
     });
 }
+//# sourceMappingURL=inlineCompletionProvider.js.map

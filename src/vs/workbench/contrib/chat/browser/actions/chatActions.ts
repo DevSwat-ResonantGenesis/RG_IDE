@@ -1191,7 +1191,7 @@ export function registerChatActions() {
 			}
 
 			const free = chatEntitlementService.entitlement === ChatEntitlement.Free;
-			const upgradeToPro = free ? localize('upgradeToPro', "Upgrade to Resonant Pro for:\n- Unlimited inline suggestions\n- Unlimited chat messages\n- Access to premium models") : undefined;
+			const upgradeToPro = free ? localize('upgradeToPro', "Upgrade to DevSwat Pro for:\n- Unlimited inline suggestions\n- Unlimited chat messages\n- Access to premium models") : undefined;
 
 			await dialogService.prompt({
 				type: 'none',
@@ -1202,7 +1202,7 @@ export function registerChatActions() {
 				},
 				buttons: [
 					{
-						label: free ? localize('upgradePro', "Upgrade to Resonant Pro") : localize('upgradePlan', "Upgrade DevSwat AI Plan"),
+						label: free ? localize('upgradePro', "Upgrade to DevSwat Pro") : localize('upgradePlan', "Upgrade DevSwat AI Plan"),
 						run: () => {
 							const commandId = 'workbench.action.chat.upgradePlan';
 							telemetryService.publicLog2<WorkbenchActionExecutedEvent, WorkbenchActionExecutedClassification>('workbenchActionExecuted', { id: commandId, from: 'chat-dialog' });

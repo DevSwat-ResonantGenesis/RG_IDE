@@ -36,7 +36,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 		this._disposables.push(
 			vscode.authentication.registerAuthenticationProvider(
 				ResonantAuthenticationProvider.id,
-				'Resonant Genesis',
+				'DevSwat',
 				this,
 				{ supportsMultipleAccounts: false }
 			)
@@ -65,7 +65,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 		const session: vscode.AuthenticationSession = {
 			id: `resonant-${Date.now()}`,
 			accessToken: token,
-			account: { id: userInfo.email || 'user', label: userInfo.name || userInfo.email || 'Resonant User' },
+			account: { id: userInfo.email || 'user', label: userInfo.name || userInfo.email || 'DevSwat User' },
 			scopes: [...scopes],
 		};
 
@@ -92,7 +92,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 				removed: removed.map(s => ({ id: s.id, accessToken: s.accessToken, account: s.account, scopes: s.scopes })),
 			});
 		}
-		vscode.window.showInformationMessage('Resonant IDE: Signed out.');
+		vscode.window.showInformationMessage('DevSwat IDE: Signed out.');
 	}
 
 	private _doLogin(apiUrl: string, port: number): Promise<string> {
@@ -109,7 +109,7 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 					const token = url.searchParams.get('token');
 					if (token) {
 						res.writeHead(200, { 'Content-Type': 'text/html' });
-						res.end('<html><body style="font-family:sans-serif;background:#1e1e1e;color:#ccc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="color:#4ade80">Signed In!</h2><p>Return to Resonant IDE.</p></div></body></html>');
+						res.end('<html><body style="font-family:sans-serif;background:#1e1e1e;color:#ccc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="color:#4ade80">Signed In!</h2><p>Return to DevSwat IDE.</p></div></body></html>');
 						clearTimeout(timer);
 						resolved = true;
 						setTimeout(() => { if (this._localServer) { this._localServer.close(); this._localServer = null; } }, 500);
@@ -134,18 +134,18 @@ export class ResonantAuthenticationProvider implements vscode.AuthenticationProv
 				reject(err);
 			});
 
-			// Aggressive poll: after 5s, re-open the callback URL every 2s.
-			// Once user logs in on browser, cookie is set and next poll succeeds.
+			// Gentle fallback poll: backend rg_desktop_port cookie handles OAuth redirect.
+			// This poll only covers credential logins where frontend redirect may not fire.
 			let pollElapsed = 0;
 			const retryTimer = setInterval(async () => {
-				pollElapsed += 2000;
+				pollElapsed += 10000;
 				if (resolved || !this._localServer) { clearInterval(retryTimer); return; }
-				if (pollElapsed > 120000) { clearInterval(retryTimer); return; } // 2min max
-				if (pollElapsed >= 5000) {
-					console.log(`[Resonant Auth Provider] Poll ${Math.round(pollElapsed / 1000)}s — re-opening callback`);
+				if (pollElapsed > 300000) { clearInterval(retryTimer); return; } // 5min max
+				if (pollElapsed >= 15000) {
+					console.log(`[Resonant Auth Provider] Fallback poll ${Math.round(pollElapsed / 1000)}s — re-opening callback`);
 					await vscode.env.openExternal(vscode.Uri.parse(authUrl));
 				}
-			}, 2000);
+			}, 10000);
 		});
 	}
 

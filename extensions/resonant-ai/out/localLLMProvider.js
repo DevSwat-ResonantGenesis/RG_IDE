@@ -39,7 +39,7 @@ exports.callLocalCompletions = callLocalCompletions;
 exports.callLocalCompletionsSync = callLocalCompletionsSync;
 /*---------------------------------------------------------------------------------------------
  *  Local LLM Provider — Direct connection to Ollama or any OpenAI-compatible local server.
- *  Since Resonant IDE is a desktop Electron app, it can call localhost directly.
+ *  Since DevSwat IDE is a desktop Electron app, it can call localhost directly.
  *  No WebSocket tunnel needed (unlike the web platform).
  *
  *  Supports:
@@ -335,3 +335,4 @@ function httpPost(url, payload, timeoutMs = 60000) {
         req.end();
     });
 }
+//# sourceMappingURL=localLLMProvider.js.map

@@ -125,7 +125,7 @@ export class ResonantAuthService {
 		await this._context.globalState.update(AUTH_USER_KEY, undefined);
 		await this._context.globalState.update('resonant_auth_sessions', []);
 		this._onDidChangeAuth.fire(false);
-		vscode.window.showInformationMessage('Resonant IDE: Signed out.');
+		vscode.window.showInformationMessage('DevSwat IDE: Signed out.');
 	}
 
 	public async setTokenManually(token: string): Promise<void> {
@@ -141,7 +141,7 @@ export class ResonantAuthService {
 		await this._context.globalState.update('resonant_auth_sessions', [{
 			id: sessionId,
 			accessToken: token,
-			account: { id: user.email || 'user', label: user.name || user.email || 'Resonant User' },
+			account: { id: user.email || 'user', label: user.name || user.email || 'DevSwat User' },
 			scopes: ['profile'],
 		}]);
 
@@ -157,7 +157,7 @@ export class ResonantAuthService {
 				await this._context.globalState.update('resonant_auth_sessions', [{
 					id: sessionId,
 					accessToken: token,
-					account: { id: realUser.email || 'user', label: realUser.name || realUser.email || 'Resonant User' },
+					account: { id: realUser.email || 'user', label: realUser.name || realUser.email || 'DevSwat User' },
 					scopes: ['profile'],
 				}]);
 				displayName = realUser.name || realUser.email || displayName;
@@ -165,7 +165,7 @@ export class ResonantAuthService {
 			}
 		} catch { /* use provided info */ }
 
-		vscode.window.showInformationMessage(`Resonant IDE: Signed in as ${displayName}`);
+		vscode.window.showInformationMessage(`DevSwat IDE: Signed in as ${displayName}`);
 	}
 
 	private async _fetchUserInfo(token: string): Promise<UserInfo | null> {
@@ -224,7 +224,7 @@ export class ResonantAuthService {
 					if (token) {
 						res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
 						res.end([
-							'<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resonant IDE</title>',
+							'<!DOCTYPE html><html><head><meta charset="utf-8"><title>DevSwat IDE</title>',
 							'<style>',
 							'*{margin:0;padding:0;box-sizing:border-box}',
 							'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a0f;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}',
@@ -236,12 +236,12 @@ export class ResonantAuthService {
 							'p{font-size:15px;color:rgba(255,255,255,0.6);font-weight:400;line-height:1.5}',
 							'.sub{margin-top:16px;font-size:13px;color:rgba(255,255,255,0.3);transition:opacity 0.3s}',
 							'</style></head><body>',
-							'<div class="watermark">RESONANT</div>',
+							'<div class="watermark">DEVSWAT</div>',
 							'<div class="card">',
 							'<div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>',
 							'<h2>Signed In</h2>',
 							'<p>You are signed in!</p>',
-							'<p class="sub">You can close this tab and return to Resonant IDE.</p>',
+							'<p class="sub">You can close this tab and return to DevSwat IDE.</p>',
 							'</div>',
 							'<script>setTimeout(function(){try{window.close()}catch(e){}},2000)</script>',
 							'</body></html>',
@@ -277,15 +277,15 @@ export class ResonantAuthService {
 	}
 
 	/**
-	 * Aggressive poll: after initial browser open, wait 5s then re-open the
-	 * desktop-callback URL every 2s. Once the user logs in on the browser
-	 * the cookie is set — next poll redirects to localhost and token arrives.
-	 * Stops immediately when token is received. No user interaction needed.
+	 * Gentle poll: wait for OAuth to complete, then re-open the desktop-callback
+	 * URL periodically. The backend sets an rg_desktop_port cookie so OAuth
+	 * redirects the token to us automatically. This poll is only a fallback
+	 * for credential logins where the frontend redirect might not fire.
 	 */
 	private _pollForTokenAndRetry(authUrl: string, _port: number): void {
-		const INITIAL_WAIT_MS = 5000;
-		const POLL_INTERVAL_MS = 2000;
-		const MAX_POLL_DURATION_MS = 120000; // 2 minutes total
+		const INITIAL_WAIT_MS = 15000;  // 15s — give OAuth time to complete
+		const POLL_INTERVAL_MS = 8000;  // 8s between retries (not aggressive)
+		const MAX_POLL_DURATION_MS = 300000; // 5 minutes total
 		let totalElapsed = 0;
 
 		const timer = setInterval(async () => {
@@ -309,7 +309,7 @@ export class ResonantAuthService {
 				console.log('[Resonant Auth] Poll timeout — giving up');
 				clearInterval(timer);
 				vscode.window.showWarningMessage(
-					'Resonant IDE: Login timed out. Please try again.',
+					'DevSwat IDE: Login timed out. Please try again.',
 					'Retry'
 				).then(action => {
 					if (action === 'Retry') {
@@ -320,9 +320,9 @@ export class ResonantAuthService {
 				return;
 			}
 
-			// After initial wait, silently re-open the auth URL every interval
+			// After initial wait, re-open the auth URL as a fallback
 			if (totalElapsed >= INITIAL_WAIT_MS) {
-				console.log(`[Resonant Auth] Poll ${Math.round(totalElapsed / 1000)}s — re-opening callback`);
+				console.log(`[Resonant Auth] Fallback poll ${Math.round(totalElapsed / 1000)}s — re-opening callback`);
 				await vscode.env.openExternal(vscode.Uri.parse(authUrl));
 			}
 		}, POLL_INTERVAL_MS);

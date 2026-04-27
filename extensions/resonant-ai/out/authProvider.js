@@ -58,7 +58,7 @@ class ResonantAuthenticationProvider {
     _localServer = null;
     constructor(_context) {
         this._context = _context;
-        this._disposables.push(vscode.authentication.registerAuthenticationProvider(ResonantAuthenticationProvider.id, 'Resonant Genesis', this, { supportsMultipleAccounts: false }));
+        this._disposables.push(vscode.authentication.registerAuthenticationProvider(ResonantAuthenticationProvider.id, 'DevSwat', this, { supportsMultipleAccounts: false }));
     }
     async getSessions(_scopes) {
         const stored = this._context.globalState.get(SESSIONS_KEY, []);
@@ -79,7 +79,7 @@ class ResonantAuthenticationProvider {
         const session = {
             id: `resonant-${Date.now()}`,
             accessToken: token,
-            account: { id: userInfo.email || 'user', label: userInfo.name || userInfo.email || 'Resonant User' },
+            account: { id: userInfo.email || 'user', label: userInfo.name || userInfo.email || 'DevSwat User' },
             scopes: [...scopes],
         };
         // Persist
@@ -102,7 +102,7 @@ class ResonantAuthenticationProvider {
                 removed: removed.map(s => ({ id: s.id, accessToken: s.accessToken, account: s.account, scopes: s.scopes })),
             });
         }
-        vscode.window.showInformationMessage('Resonant IDE: Signed out.');
+        vscode.window.showInformationMessage('DevSwat IDE: Signed out.');
     }
     _doLogin(apiUrl, port) {
         return new Promise((resolve, reject) => {
@@ -120,7 +120,7 @@ class ResonantAuthenticationProvider {
                     const token = url.searchParams.get('token');
                     if (token) {
                         res.writeHead(200, { 'Content-Type': 'text/html' });
-                        res.end('<html><body style="font-family:sans-serif;background:#1e1e1e;color:#ccc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="color:#4ade80">Signed In!</h2><p>Return to Resonant IDE.</p></div></body></html>');
+                        res.end('<html><body style="font-family:sans-serif;background:#1e1e1e;color:#ccc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="color:#4ade80">Signed In!</h2><p>Return to DevSwat IDE.</p></div></body></html>');
                         clearTimeout(timer);
                         resolved = true;
                         setTimeout(() => { if (this._localServer) {
@@ -191,7 +191,7 @@ class ResonantAuthenticationProvider {
             return { email: data.email || '', name: data.full_name || data.display_name || data.name || data.email || '' };
         }
         catch (err) {
-            console.error('[Resonant AI] Failed to fetch user profile:', err);
+            console.error('[DevSwat AI] Failed to fetch user profile:', err);
             return { email: '', name: '' };
         }
     }
@@ -205,3 +205,4 @@ class ResonantAuthenticationProvider {
     }
 }
 exports.ResonantAuthenticationProvider = ResonantAuthenticationProvider;
+//# sourceMappingURL=authProvider.js.map

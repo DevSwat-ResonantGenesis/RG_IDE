@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 /*---------------------------------------------------------------------------------------------
- *  Resonant AI Extension — Thin Client
+ *  DevSwat AI Extension — Thin Client
  *  Registers as a Language Model Provider + Chat Participant for the built-in Chat panel.
  *  All orchestration (system prompt, tool selection, agentic loop) runs server-side.
  *  This client renders UI, discovers local LLM models, and executes tools locally.
@@ -569,9 +569,9 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                         await postToolResult(apiUrl, authToken, sessionId, callId, toolName, serverResult);
                                     }
                                     catch (err) {
-                                        console.error('[Resonant AI] Failed to POST tool result:', err);
+                                        console.error('[DevSwat AI] Failed to POST tool result:', err);
                                     }
-                                })().catch(err => console.error('[Resonant AI] Tool execution error:', err));
+                                })().catch(err => console.error('[DevSwat AI] Tool execution error:', err));
                                 break;
                             }
                             case 'fallback': {
@@ -613,7 +613,7 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                         });
                                     }
                                     catch (err) {
-                                        console.error('[Resonant AI] Local Ollama proxy failed:', err);
+                                        console.error('[DevSwat AI] Local Ollama proxy failed:', err);
                                         try {
                                             await postLLMResult(apiUrl, authToken, proxySessionId, {
                                                 content: '',
@@ -624,10 +624,10 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                             });
                                         }
                                         catch (postErr) {
-                                            console.error('[Resonant AI] Failed to POST LLM error result:', postErr);
+                                            console.error('[DevSwat AI] Failed to POST LLM error result:', postErr);
                                         }
                                     }
-                                })().catch(err => console.error('[Resonant AI] LLM proxy error:', err));
+                                })().catch(err => console.error('[DevSwat AI] LLM proxy error:', err));
                                 break;
                             }
                             case 'tool_done':
@@ -713,7 +713,7 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
 }
 let authService;
 function activate(context) {
-    console.log('[Resonant AI] Extension activating...');
+    console.log('[DevSwat AI] Extension activating...');
     // Register VS Code authentication provider (powers the Sign In button)
     const authProvider = new authProvider_1.ResonantAuthenticationProvider(context);
     context.subscriptions.push(authProvider);
@@ -723,7 +723,7 @@ function activate(context) {
     // Register as Language Model Provider for the built-in Chat panel
     const lmProvider = new languageModelProvider_1.ResonantLanguageModelProvider(context, async () => authService.getToken());
     context.subscriptions.push(vscode.lm.registerLanguageModelChatProvider('resonant', lmProvider));
-    console.log('[Resonant AI] Registered language model provider "resonant"');
+    console.log('[DevSwat AI] Registered language model provider "resonant"');
     // Register inline completion provider (ghost text / Copilot-style completions)
     const inlineProvider = new inlineCompletionProvider_1.ResonantInlineCompletionProvider();
     context.subscriptions.push(vscode.languages.registerInlineCompletionItemProvider({ pattern: '**' }, inlineProvider));
@@ -743,9 +743,9 @@ function activate(context) {
         const current = config.get('inlineCompletions', true);
         config.update('inlineCompletions', !current, vscode.ConfigurationTarget.Global);
         (0, inlineCompletionProvider_1.setInlineCompletionEnabled)(!current);
-        vscode.window.showInformationMessage(`Resonant AI inline completions: ${!current ? 'ON' : 'OFF'}`);
+        vscode.window.showInformationMessage(`DevSwat AI inline completions: ${!current ? 'ON' : 'OFF'}`);
     }));
-    console.log('[Resonant AI] Registered inline completion provider');
+    console.log('[DevSwat AI] Registered inline completion provider');
     // Register as Chat Participant (agent) — full agentic loop with local tool execution.
     // Calls /api/v1/ide/completions DIRECTLY with LOCAL_TOOL_DEFINITIONS.
     const participant = vscode.chat.createChatParticipant('resonant-genesis.resonant-ai.default', async (request, chatContext, response, token) => {
@@ -782,7 +782,7 @@ function activate(context) {
         catch { /* use defaults */ }
         // Auth required for all modes — server handles orchestration even for local LLM
         if (!authToken) {
-            response.markdown('⚠️ Please sign in first. Use **Resonant AI: Sign In** from the command palette or click the status bar.');
+            response.markdown('⚠️ Please sign in first. Use **DevSwat AI: Sign In** from the command palette or click the status bar.');
             return;
         }
         // Wire auth info for server-backed memory
@@ -793,6 +793,55 @@ function activate(context) {
             return;
         }
         const openFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+        // ── Cascade-style IDE metadata ──
+        const activeEditor = vscode.window.activeTextEditor;
+        const ideMetadata = {
+            os: process.platform,
+            active_file: openFile || null,
+            cursor_line: activeEditor ? activeEditor.selection.active.line + 1 : null,
+            active_language: activeEditor?.document.languageId || null,
+            open_files: vscode.window.visibleTextEditors
+                .map(e => e.document.uri.fsPath)
+                .filter(p => !p.startsWith('output:') && !p.includes('extension-output')),
+            selection: activeEditor && !activeEditor.selection.isEmpty
+                ? activeEditor.document.getText(activeEditor.selection).slice(0, 2000)
+                : null,
+        };
+        // ── Cascade-style workspace layout snapshot ──
+        let workspaceLayout = '';
+        try {
+            const buildTree = async (dir, prefix, depth) => {
+                if (depth > 3)
+                    return '';
+                const entries = await vscode.workspace.fs.readDirectory(dir);
+                const skip = new Set(['.git', 'node_modules', '__pycache__', '.venv', 'venv', '.next', 'dist', 'build', '.cache', '.DS_Store', 'coverage', '.nyc_output', '.tox', 'egg-info']);
+                const sorted = entries
+                    .filter(([name]) => !skip.has(name) && !name.startsWith('.'))
+                    .sort((a, b) => {
+                    if (a[1] === vscode.FileType.Directory && b[1] !== vscode.FileType.Directory)
+                        return -1;
+                    if (a[1] !== vscode.FileType.Directory && b[1] === vscode.FileType.Directory)
+                        return 1;
+                    return a[0].localeCompare(b[0]);
+                })
+                    .slice(0, 30);
+                let tree = '';
+                for (const [name, type] of sorted) {
+                    const isDir = type === vscode.FileType.Directory;
+                    tree += `${prefix}${isDir ? name + '/' : name}\n`;
+                    if (isDir && depth < 3) {
+                        const childUri = vscode.Uri.joinPath(dir, name);
+                        tree += await buildTree(childUri, prefix + '  ', depth + 1);
+                    }
+                }
+                return tree;
+            };
+            workspaceLayout = await buildTree(vscode.workspace.workspaceFolders[0].uri, '- ', 0);
+            if (workspaceLayout.length > 4000) {
+                workspaceLayout = workspaceLayout.slice(0, 4000) + '\n... (truncated)';
+            }
+        }
+        catch { /* non-critical */ }
         const locStart = (0, locTracker_1.getSessionStats)();
         const startTime = Date.now();
         let totalToolCalls = 0;
@@ -835,8 +884,11 @@ function activate(context) {
                 workspace_root: workspaceRoot,
                 active_file: openFile,
                 model_id: `resonant-${providerKey}-${modelName}`,
-                context: chatHistoryContext.slice(-40),
+                context: chatHistoryContext.slice(-10),
                 max_loops: maxLoops,
+                tools: toolDefinitions_1.LOCAL_TOOL_DEFINITIONS,
+                ide_metadata: ideMetadata,
+                workspace_layout: workspaceLayout || undefined,
             };
             if (providerKey === 'ollama') {
                 const localLLMConfig = vscode.workspace.getConfiguration('resonant.localLLM');
@@ -896,7 +948,7 @@ function activate(context) {
     });
     participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'icon.svg');
     context.subscriptions.push(participant);
-    console.log(`[Resonant AI] Registered chat participant with ${toolDefinitions_1.TOOL_COUNT} local tools`);
+    console.log(`[DevSwat AI] Registered chat participant with ${toolDefinitions_1.TOOL_COUNT} local tools`);
     // Commands
     context.subscriptions.push(vscode.commands.registerCommand('resonant.openChat', () => {
         // Open the built-in chat panel
@@ -1005,16 +1057,16 @@ function activate(context) {
     const agentProvider = new agentProvider_1.ResonantAgentProvider(context, async () => authService.getToken());
     context.subscriptions.push({ dispose: () => agentProvider.dispose() });
     agentProvider.activate();
-    // Register custom Resonant AI Chat sidebar (shows SSE flow, tool calls, timing)
+    // Register custom DevSwat AI Chat sidebar (shows SSE flow, tool calls, timing)
     const chatViewProvider = new chatViewProvider_1.ResonantChatViewProvider(context, authService);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('resonant.chatView', chatViewProvider));
-    console.log('[Resonant AI] Registered Resonant AI Chat sidebar view');
+    console.log('[DevSwat AI] Registered DevSwat AI Chat sidebar view');
     context.subscriptions.push(vscode.commands.registerCommand('resonant.toggleChatView', () => {
         vscode.commands.executeCommand('resonant.chatView.focus');
     }));
     // Listen for auth changes — update status bar, re-fetch agents & models
     context.subscriptions.push(authService.onDidChangeAuth(async (loggedIn) => {
-        console.log(`[Resonant AI] Auth changed: loggedIn=${loggedIn}`);
+        console.log(`[DevSwat AI] Auth changed: loggedIn=${loggedIn}`);
         await settingsPanel.onAuthChanged();
         chatViewProvider.onAuthChanged(loggedIn);
         if (loggedIn) {
@@ -1026,7 +1078,7 @@ function activate(context) {
     context.subscriptions.push(vscode.commands.registerCommand('resonant.refreshProviders', () => {
         lmProvider.refreshModels();
         agentProvider.refreshAgents();
-        vscode.window.showInformationMessage('Resonant AI: Refreshing providers and agents...');
+        vscode.window.showInformationMessage('DevSwat AI: Refreshing providers and agents...');
     }));
     // Initialize LOC tracker + update checker
     const initApiUrl = vscode.workspace.getConfiguration('resonant').get('apiUrl', '') || authService.getAuthDomain();
@@ -1046,11 +1098,12 @@ function activate(context) {
             (0, locTracker_1.initLocTracker)(url, token, 'user', '');
         }
     }));
-    console.log('[Resonant AI] Extension activated — integrated into built-in Chat.');
+    console.log('[DevSwat AI] Extension activated — integrated into built-in Chat.');
 }
 function deactivate() {
     (0, locTracker_1.disposeLocTracker)();
     (0, updateChecker_1.disposeUpdateChecker)();
     (0, interactiveTerminal_1.disposeAllSessions)();
-    console.log('[Resonant AI] Extension deactivated.');
+    console.log('[DevSwat AI] Extension deactivated.');
 }
+//# sourceMappingURL=extension.js.map

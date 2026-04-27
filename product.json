@@ -1,11 +1,11 @@
 {
 	"quality": "stable",
-	"nameShort": "Resonant IDE",
-	"nameLong": "Resonant IDE",
+	"nameShort": "DevSwat IDE",
+	"nameLong": "DevSwat IDE",
 	"applicationName": "resonant-ide",
 	"dataFolderName": ".resonant-ide",
 	"win32MutexName": "resonantide",
-	"licenseName": "Resonant Genesis Source Available License",
+	"licenseName": "DevSwat Source Available License",
 	"licenseUrl": "https://resonantgenesis.xyz/license",
 	"serverLicenseUrl": "https://resonantgenesis.xyz/license",
 	"serverGreeting": [],
@@ -14,15 +14,15 @@
 	"serverApplicationName": "resonant-ide-server",
 	"serverDataFolderName": ".resonant-ide-server",
 	"tunnelApplicationName": "resonant-ide-tunnel",
-	"win32DirName": "Resonant IDE",
-	"win32NameVersion": "Resonant IDE",
+	"win32DirName": "DevSwat IDE",
+	"win32NameVersion": "DevSwat IDE",
 	"win32RegValueName": "ResonantIDE",
 	"win32x64AppId": "{{D77B7E06-80BA-4137-BCF4-654B95CCEBC5}",
 	"win32arm64AppId": "{{D1ACE434-89C5-48D1-88D3-E2991DF85475}",
 	"win32x64UserAppId": "{{CC6B787D-37A0-49E8-AE24-8559A032BE0C}",
 	"win32arm64UserAppId": "{{3AEBF0C8-F733-4AD4-BADE-FDB816D53D7B}",
 	"win32AppUserModelId": "ResonantGenesis.ResonantIDE",
-	"win32ShellNameShort": "R&esonant IDE",
+	"win32ShellNameShort": "D&evSwat IDE",
 	"win32TunnelServiceMutex": "resonantide-tunnelservice",
 	"win32TunnelMutex": "resonantide-tunnel",
 	"darwinBundleIdentifier": "com.resonantgenesis.resonant-ide",
@@ -43,8 +43,8 @@
 		"publisherUrl": ""
 	},
 	"crashReporter": {
-		"companyName": "Resonant Genesis",
-		"productName": "Resonant IDE"
+		"companyName": "DevSwat",
+		"productName": "DevSwat IDE"
 	},
 	"enableTelemetry": false,
 	"enabledTelemetryLevels": {

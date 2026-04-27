@@ -148,6 +148,9 @@ async function executeToolCall(toolCall, workspaceRoot) {
             case 'code_visualizer_verify_invariants': return await cvExec('verify_invariants', args.path || workspaceRoot);
             // Graph Janitor Agent — autonomous dead code / reachability scanner (runs locally via GovernanceEngine)
             case 'graph_janitor_scan': return await cvExec('graph_janitor', args.path || workspaceRoot, [String(args.max_proposals || 15), String(args.drift_threshold || 20.0)]);
+            // Compatibility aliases (LLMs sometimes hallucinate *_github variants)
+            case 'code_visualizer_scan_github': return await cvExec('scan', args.path || workspaceRoot);
+            case 'graph_janitor_scan_github': return await cvExec('graph_janitor', args.path || workspaceRoot, [String(args.max_proposals || 15), String(args.drift_threshold || 20.0)]);
             // Interactive Terminal
             case 'terminal_create': return await execTerminalCreate(args.name, args.cwd || workspaceRoot, args.shell);
             case 'terminal_send': return await execTerminalSend(args.session_id, args.input);
@@ -563,7 +566,7 @@ async function execRunCommand(command, cwd, blocking, waitMsBeforeAsync, safeToA
     if (!cwd || !fs.existsSync(cwd)) {
         const wsFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         const fallbackCwd = wsFolder || require('os').homedir();
-        console.warn(`[Resonant AI] run_command cwd '${cwd}' does not exist, falling back to '${fallbackCwd}'`);
+        console.warn(`[DevSwat AI] run_command cwd '${cwd}' does not exist, falling back to '${fallbackCwd}'`);
         cwd = fallbackCwd;
     }
     // SafeToAutoRun: if false/undefined, commands run but the AI is expected to have confirmed with user.
@@ -1427,6 +1430,12 @@ function _cvCliPath() {
     return path.join(extDir, 'code_visualizer', 'cv_cli.py');
 }
 async function cvExec(command, targetPath, extraArgs = []) {
+    if (/^https?:\/\//i.test(targetPath) || /^git@/i.test(targetPath)) {
+        return JSON.stringify({
+            error: 'Code Visualizer local mode only supports local filesystem paths. Clone the repository locally and pass its absolute path.',
+            path: targetPath,
+        });
+    }
     const cliPath = _cvCliPath();
     const args = [cliPath, command, targetPath, ...extraArgs];
     return new Promise((resolve) => {
@@ -1872,3 +1881,4 @@ async function execEditNotebook(filePath, cellNumber, newSource, cellType, editM
         return JSON.stringify({ error: e.message });
     }
 }
+//# sourceMappingURL=toolExecutor.js.map

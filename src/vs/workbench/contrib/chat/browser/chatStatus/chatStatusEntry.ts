@@ -31,12 +31,12 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 	) {
 		super();
 
-		// Resonant IDE uses its own status bar — hide the built-in copilot icon
+		// DevSwat IDE uses its own status bar — hide the built-in copilot icon
 		this.update();
 	}
 
 	private update(): void {
-		// Resonant IDE uses its own status bar item — hide the built-in copilot icon entirely
+		// DevSwat IDE uses its own status bar item — hide the built-in copilot icon entirely
 		this.entry?.dispose();
 		this.entry = undefined;
 	}

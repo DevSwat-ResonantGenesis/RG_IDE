@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Resonant IDE Settings Panel — Windsurf-style status bar panel
+ *  DevSwat IDE Settings Panel — Windsurf-style status bar panel
  *  Shows Plan Info, Settings, AI Shortcuts tabs at bottom-right
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
@@ -34,8 +34,8 @@ export class SettingsPanelProvider {
 			vscode.StatusBarAlignment.Right,
 			-1000, // far right
 		);
-		this.statusBarItem.text = '$(account) Resonant IDE';
-		this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+		this.statusBarItem.text = '$(account) DevSwat IDE';
+		this.statusBarItem.tooltip = 'DevSwat IDE — Settings';
 		this.statusBarItem.command = 'resonant.openSettingsPanel';
 		this.statusBarItem.show();
 	}
@@ -45,20 +45,20 @@ export class SettingsPanelProvider {
 		if (token) {
 			try {
 				const info = await this.fetchPlanInfo(token);
-				this.statusBarItem.text = `$(account) ${info.full_name || info.email || 'Resonant IDE'}`;
+				this.statusBarItem.text = `$(account) ${info.full_name || info.email || 'DevSwat IDE'}`;
 				this.statusBarItem.tooltip = info.unlimited_credits
 					? `${info.tier.charAt(0).toUpperCase() + info.tier.slice(1)} — Unlimited credits`
 					: `${info.tier.charAt(0).toUpperCase() + info.tier.slice(1)} — ${info.credits_remaining} credits`;
 				this.statusBarItem.command = 'resonant.openSettingsPanel';
 			} catch {
 				// Plan info failed but token exists — show signed-in state
-				this.statusBarItem.text = '$(account) Resonant IDE';
-				this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+				this.statusBarItem.text = '$(account) DevSwat IDE';
+				this.statusBarItem.tooltip = 'DevSwat IDE — Settings';
 				this.statusBarItem.command = 'resonant.openSettingsPanel';
 			}
 		} else {
-			this.statusBarItem.text = '$(account) Resonant IDE';
-			this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+			this.statusBarItem.text = '$(account) DevSwat IDE';
+			this.statusBarItem.tooltip = 'DevSwat IDE — Settings';
 			this.statusBarItem.command = 'resonant.openSettingsPanel';
 		}
 	}
@@ -79,7 +79,7 @@ export class SettingsPanelProvider {
 
 		this.panel = vscode.window.createWebviewPanel(
 			'resonantSettings',
-			'Resonant IDE — Settings',
+			'DevSwat IDE — Settings',
 			vscode.ViewColumn.One,
 			{ enableScripts: true, retainContextWhenHidden: true },
 		);
@@ -307,7 +307,7 @@ export class SettingsPanelProvider {
 		<body><div class="container">
 			<div class="tabs"><button class="tab active">Plan Info</button><button class="tab">Settings</button><button class="tab">AI Shortcuts</button></div>
 			<div class="content">
-				<div class="section"><h2>Welcome to Resonant IDE</h2><p class="muted">Sign in to access your AI assistant, credits, and settings.</p>
+				<div class="section"><h2>Welcome to DevSwat IDE</h2><p class="muted">Sign in to access your AI assistant, credits, and settings.</p>
 				<button class="btn primary" onclick="post('signIn')">Sign In</button></div>
 			</div>
 		</div><script>${this.getScript()}</script></body></html>`;

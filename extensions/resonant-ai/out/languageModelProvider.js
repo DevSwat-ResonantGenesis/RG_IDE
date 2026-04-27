@@ -72,11 +72,11 @@ class ResonantLanguageModelProvider {
     }
     /** Static fallback model — always returned immediately if HTTP fails */
     static FALLBACK_MODEL = {
-        id: 'resonant-groq-llama-3.3-70b-versatile',
+        id: 'devswat-groq-llama-3.3-70b-versatile',
         name: 'Groq — llama-3.3-70b-versatile',
         family: 'groq',
         version: 'llama-3.3-70b-versatile',
-        tooltip: 'Resonant Genesis — Groq',
+        tooltip: 'DevSwat \u2014 Groq',
         maxInputTokens: 128000,
         maxOutputTokens: 32768,
         isDefault: true,
@@ -89,7 +89,7 @@ class ResonantLanguageModelProvider {
             providers = await this.fetchProviders();
         }
         catch {
-            console.warn('[Resonant AI] Provider fetch failed, using fallback');
+            console.warn('[DevSwat AI] Provider fetch failed, using fallback');
         }
         // Also fetch user BYOK keys to add those providers
         let byokProviders = [];
@@ -239,11 +239,11 @@ class ResonantLanguageModelProvider {
                     });
                 }
                 if (localModels.length > 0) {
-                    console.log(`[Resonant AI] Discovered ${localModels.length} local models from ${localUrl}`);
+                    console.log(`[DevSwat AI] Discovered ${localModels.length} local models from ${localUrl}`);
                 }
             }
             catch (err) {
-                console.warn(`[Resonant AI] Local LLM discovery failed (${localUrl}):`, err);
+                console.warn(`[DevSwat AI] Local LLM discovery failed (${localUrl}):`, err);
                 // Still add configured model as fallback
                 if (configuredModel) {
                     models.push({
@@ -266,7 +266,7 @@ class ResonantLanguageModelProvider {
             models.push(ResonantLanguageModelProvider.FALLBACK_MODEL);
         }
         const localCount = models.filter((m) => m.family === 'ollama').length;
-        console.log(`[Resonant AI] provideLanguageModelChatInformation returning ${models.length} models (${byokProviders.length} BYOK, ${localCount} local)`);
+        console.log(`[DevSwat AI] provideLanguageModelChatInformation returning ${models.length} models (${byokProviders.length} BYOK, ${localCount} local)`);
         return models;
     }
     async provideLanguageModelChatResponse(model, messages, options, progress, token) {
@@ -279,7 +279,7 @@ class ResonantLanguageModelProvider {
         // System prompt — establishes identity and agentic capabilities
         const systemPrompt = {
             role: 'system',
-            content: `You are Resonant AI — a powerful agentic coding assistant inside Resonant IDE by Resonant Genesis.
+            content: `You are DevSwat AI — a powerful agentic coding assistant inside DevSwat IDE by DevSwat.
 You are pair-programming with the user. Your goal is to take action, not describe what you would do.
 
 ## COMMUNICATION
@@ -312,7 +312,7 @@ You are pair-programming with the user. Your goal is to take action, not describ
 - For destructive operations (file deletion, git push, deploy), confirm with the user first.
 - Never expose API keys or credentials in responses.
 
-You are Resonant AI by Resonant Genesis. Not GPT, Claude, Llama, or any other base model.`,
+You are DevSwat AI by DevSwat. Not GPT, Claude, Llama, or any other base model.`,
         };
         // Convert VS Code messages to OpenAI format, prepend system prompt
         const openaiMessages = [systemPrompt, ...messages.map(msg => this.convertMessage(msg))];
@@ -455,11 +455,11 @@ You are Resonant AI by Resonant Genesis. Not GPT, Claude, Llama, or any other ba
             const data = JSON.parse(body);
             cachedProviders = data.providers || [];
             cacheTimestamp = Date.now();
-            console.log(`[Resonant AI] Fetched ${cachedProviders.length} providers:`, cachedProviders.map(p => `${p.provider_key}=${p.status}`).join(', '));
+            console.log(`[DevSwat AI] Fetched ${cachedProviders.length} providers:`, cachedProviders.map(p => `${p.provider_key}=${p.status}`).join(', '));
             return cachedProviders;
         }
         catch (err) {
-            console.error('[Resonant AI] Failed to fetch providers:', err);
+            console.error('[DevSwat AI] Failed to fetch providers:', err);
             return cachedProviders || [];
         }
     }
@@ -631,7 +631,7 @@ You are Resonant AI by Resonant Genesis. Not GPT, Claude, Llama, or any other ba
                     }
                     break;
                 case 'error':
-                    progress.report(new vscode.LanguageModelTextPart(`\n\n⚠️ Error from Resonant Genesis: ${payload.error}\n`));
+                    progress.report(new vscode.LanguageModelTextPart(`\n\n⚠️ Error from DevSwat: ${payload.error}\n`));
                     break;
                 case 'done':
                     break;
@@ -646,3 +646,4 @@ You are Resonant AI by Resonant Genesis. Not GPT, Claude, Llama, or any other ba
     }
 }
 exports.ResonantLanguageModelProvider = ResonantLanguageModelProvider;
+//# sourceMappingURL=languageModelProvider.js.map

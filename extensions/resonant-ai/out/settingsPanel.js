@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SettingsPanelProvider = void 0;
 /*---------------------------------------------------------------------------------------------
- *  Resonant IDE Settings Panel — Windsurf-style status bar panel
+ *  DevSwat IDE Settings Panel — Windsurf-style status bar panel
  *  Shows Plan Info, Settings, AI Shortcuts tabs at bottom-right
  *--------------------------------------------------------------------------------------------*/
 const vscode = __importStar(require("vscode"));
@@ -52,8 +52,8 @@ class SettingsPanelProvider {
         this.getAuthDomain = getAuthDomain;
         // Create status bar item on the right
         this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, -1000);
-        this.statusBarItem.text = '$(account) Resonant IDE';
-        this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+        this.statusBarItem.text = '$(account) DevSwat IDE';
+        this.statusBarItem.tooltip = 'DevSwat IDE — Settings';
         this.statusBarItem.command = 'resonant.openSettingsPanel';
         this.statusBarItem.show();
     }
@@ -62,7 +62,7 @@ class SettingsPanelProvider {
         if (token) {
             try {
                 const info = await this.fetchPlanInfo(token);
-                this.statusBarItem.text = `$(account) ${info.full_name || info.email || 'Resonant IDE'}`;
+                this.statusBarItem.text = `$(account) ${info.full_name || info.email || 'DevSwat IDE'}`;
                 this.statusBarItem.tooltip = info.unlimited_credits
                     ? `${info.tier.charAt(0).toUpperCase() + info.tier.slice(1)} — Unlimited credits`
                     : `${info.tier.charAt(0).toUpperCase() + info.tier.slice(1)} — ${info.credits_remaining} credits`;
@@ -70,14 +70,14 @@ class SettingsPanelProvider {
             }
             catch {
                 // Plan info failed but token exists — show signed-in state
-                this.statusBarItem.text = '$(account) Resonant IDE';
-                this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+                this.statusBarItem.text = '$(account) DevSwat IDE';
+                this.statusBarItem.tooltip = 'DevSwat IDE — Settings';
                 this.statusBarItem.command = 'resonant.openSettingsPanel';
             }
         }
         else {
-            this.statusBarItem.text = '$(account) Resonant IDE';
-            this.statusBarItem.tooltip = 'Resonant IDE — Settings';
+            this.statusBarItem.text = '$(account) DevSwat IDE';
+            this.statusBarItem.tooltip = 'DevSwat IDE — Settings';
             this.statusBarItem.command = 'resonant.openSettingsPanel';
         }
     }
@@ -93,7 +93,7 @@ class SettingsPanelProvider {
             this.panel.reveal();
             return;
         }
-        this.panel = vscode.window.createWebviewPanel('resonantSettings', 'Resonant IDE — Settings', vscode.ViewColumn.One, { enableScripts: true, retainContextWhenHidden: true });
+        this.panel = vscode.window.createWebviewPanel('resonantSettings', 'DevSwat IDE — Settings', vscode.ViewColumn.One, { enableScripts: true, retainContextWhenHidden: true });
         this.panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'icon.svg');
         this.panel.onDidDispose(() => { this.panel = undefined; });
         this.panel.webview.onDidReceiveMessage(async (msg) => {
@@ -361,7 +361,7 @@ class SettingsPanelProvider {
 		<body><div class="container">
 			<div class="tabs"><button class="tab active">Plan Info</button><button class="tab">Settings</button><button class="tab">AI Shortcuts</button></div>
 			<div class="content">
-				<div class="section"><h2>Welcome to Resonant IDE</h2><p class="muted">Sign in to access your AI assistant, credits, and settings.</p>
+				<div class="section"><h2>Welcome to DevSwat IDE</h2><p class="muted">Sign in to access your AI assistant, credits, and settings.</p>
 				<button class="btn primary" onclick="post('signIn')">Sign In</button></div>
 			</div>
 		</div><script>${this.getScript()}</script></body></html>`;
@@ -459,7 +459,7 @@ class SettingsPanelProvider {
 			<!-- Settings Tab -->
 			<div class="content tab-content" id="tab-settings">
 				<div class="section">
-					<h3>Resonant AI</h3>
+					<h3>DevSwat AI</h3>
 					<div class="setting-row">
 						<div class="setting-label">API URL</div>
 						<div class="setting-value">${apiUrl}</div>
@@ -503,7 +503,7 @@ class SettingsPanelProvider {
 			<div class="content tab-content" id="tab-shortcuts">
 				<div class="section">
 					<h3>AI Chat Shortcuts</h3>
-					<div class="shortcut-row"><kbd>Cmd+Shift+A</kbd><span>Open Resonant AI Chat</span></div>
+					<div class="shortcut-row"><kbd>Cmd+Shift+A</kbd><span>Open DevSwat AI Chat</span></div>
 					<div class="shortcut-row"><kbd>Cmd+L</kbd><span>New Chat</span></div>
 					<div class="shortcut-row"><kbd>Cmd+I</kbd><span>Inline Edit</span></div>
 					<div class="shortcut-row"><kbd>Cmd+Shift+I</kbd><span>Toggle Chat Panel</span></div>
@@ -609,3 +609,4 @@ class SettingsPanelProvider {
     }
 }
 exports.SettingsPanelProvider = SettingsPanelProvider;
+//# sourceMappingURL=settingsPanel.js.map

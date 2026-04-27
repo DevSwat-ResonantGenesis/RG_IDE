@@ -155,7 +155,7 @@ export class ChatStatusDashboard extends DomWidget {
 				run: () => this.runCommandAndClose(() => this.openerService.open(URI.parse(defaultChat.manageSettingsUrl))),
 			}));
 
-			// Inline Suggestions quota removed — Resonant IDE uses its own completion system
+			// Inline Suggestions quota removed — DevSwat IDE uses its own completion system
 			const chatQuotaIndicator = chatQuota && (chatQuota.total > 0 || chatQuota.unlimited) ? this.createQuotaIndicator(this.element, this._store, chatQuota, localize('chatsLabel', "Chat messages"), false) : undefined;
 			const premiumChatLabel = premiumChatQuota?.overageEnabled && !premiumChatQuota?.unlimited ? localize('includedPremiumChatsLabel', "Included premium requests") : localize('premiumChatsLabel', "Premium requests");
 			const premiumChatQuotaIndicator = premiumChatQuota && (premiumChatQuota.total > 0 || premiumChatQuota.unlimited) ? this.createQuotaIndicator(this.element, this._store, premiumChatQuota, premiumChatLabel, true) : undefined;
@@ -166,7 +166,7 @@ export class ChatStatusDashboard extends DomWidget {
 
 			if (this.chatEntitlementService.entitlement === ChatEntitlement.Free && Number(chatQuota?.percentRemaining) <= 25) {
 				const upgradeProButton = this._store.add(new Button(this.element, { ...defaultButtonStyles, hoverDelegate: nativeHoverDelegate, secondary: this.canUseChat() /* use secondary color when chat can still be used */ }));
-				upgradeProButton.label = localize('upgradeToCopilotPro', "Upgrade to Resonant Pro");
+				upgradeProButton.label = localize('upgradeToCopilotPro', "Upgrade to DevSwat Pro");
 				this._store.add(upgradeProButton.onDidClick(() => this.runCommandAndClose('workbench.action.chat.upgradePlan')));
 			}
 
@@ -244,7 +244,7 @@ export class ChatStatusDashboard extends DomWidget {
 			}
 		}
 
-		// Inline Suggestions settings removed — Resonant IDE uses its own completion system
+		// Inline Suggestions settings removed — DevSwat IDE uses its own completion system
 
 		// Model Selection
 		{

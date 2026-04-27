@@ -697,6 +697,54 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const openFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+
+			// ── Cascade-style IDE metadata ──
+			const activeEditor = vscode.window.activeTextEditor;
+			const ideMetadata: Record<string, unknown> = {
+				os: process.platform,
+				active_file: openFile || null,
+				cursor_line: activeEditor ? activeEditor.selection.active.line + 1 : null,
+				active_language: activeEditor?.document.languageId || null,
+				open_files: vscode.window.visibleTextEditors
+					.map(e => e.document.uri.fsPath)
+					.filter(p => !p.startsWith('output:') && !p.includes('extension-output')),
+				selection: activeEditor && !activeEditor.selection.isEmpty
+					? activeEditor.document.getText(activeEditor.selection).slice(0, 2000)
+					: null,
+			};
+
+			// ── Cascade-style workspace layout snapshot ──
+			let workspaceLayout = '';
+			try {
+				const buildTree = async (dir: vscode.Uri, prefix: string, depth: number): Promise<string> => {
+					if (depth > 3) return '';
+					const entries = await vscode.workspace.fs.readDirectory(dir);
+					const skip = new Set(['.git', 'node_modules', '__pycache__', '.venv', 'venv', '.next', 'dist', 'build', '.cache', '.DS_Store', 'coverage', '.nyc_output', '.tox', 'egg-info']);
+					const sorted = entries
+						.filter(([name]) => !skip.has(name) && !name.startsWith('.'))
+						.sort((a, b) => {
+							if (a[1] === vscode.FileType.Directory && b[1] !== vscode.FileType.Directory) return -1;
+							if (a[1] !== vscode.FileType.Directory && b[1] === vscode.FileType.Directory) return 1;
+							return a[0].localeCompare(b[0]);
+						})
+						.slice(0, 30);
+					let tree = '';
+					for (const [name, type] of sorted) {
+						const isDir = type === vscode.FileType.Directory;
+						tree += `${prefix}${isDir ? name + '/' : name}\n`;
+						if (isDir && depth < 3) {
+							const childUri = vscode.Uri.joinPath(dir, name);
+							tree += await buildTree(childUri, prefix + '  ', depth + 1);
+						}
+					}
+					return tree;
+				};
+				workspaceLayout = await buildTree(vscode.workspace.workspaceFolders![0].uri, '- ', 0);
+				if (workspaceLayout.length > 4000) {
+					workspaceLayout = workspaceLayout.slice(0, 4000) + '\n... (truncated)';
+				}
+			} catch { /* non-critical */ }
+
 			const locStart = getSessionStats();
 			const startTime = Date.now();
 			let totalToolCalls = 0;
@@ -736,9 +784,11 @@ export function activate(context: vscode.ExtensionContext) {
 					workspace_root: workspaceRoot,
 					active_file: openFile,
 					model_id: `resonant-${providerKey}-${modelName}`,
-					context: chatHistoryContext.slice(-40),
+					context: chatHistoryContext.slice(-10),
 					max_loops: maxLoops,
 					tools: LOCAL_TOOL_DEFINITIONS,
+					ide_metadata: ideMetadata,
+					workspace_layout: workspaceLayout || undefined,
 				};
 				if (providerKey === 'ollama') {
 					const localLLMConfig = vscode.workspace.getConfiguration('resonant.localLLM');

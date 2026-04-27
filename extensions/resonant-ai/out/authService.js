@@ -141,7 +141,7 @@ class ResonantAuthService {
         await this._context.globalState.update(AUTH_USER_KEY, undefined);
         await this._context.globalState.update('resonant_auth_sessions', []);
         this._onDidChangeAuth.fire(false);
-        vscode.window.showInformationMessage('Resonant IDE: Signed out.');
+        vscode.window.showInformationMessage('DevSwat IDE: Signed out.');
     }
     async setTokenManually(token) {
         await this._storeAuth(token, { email: 'api-key-user', name: 'API Key' });
@@ -154,7 +154,7 @@ class ResonantAuthService {
         await this._context.globalState.update('resonant_auth_sessions', [{
                 id: sessionId,
                 accessToken: token,
-                account: { id: user.email || 'user', label: user.name || user.email || 'Resonant User' },
+                account: { id: user.email || 'user', label: user.name || user.email || 'DevSwat User' },
                 scopes: ['profile'],
             }]);
         this._onDidChangeAuth.fire(true);
@@ -168,7 +168,7 @@ class ResonantAuthService {
                 await this._context.globalState.update('resonant_auth_sessions', [{
                         id: sessionId,
                         accessToken: token,
-                        account: { id: realUser.email || 'user', label: realUser.name || realUser.email || 'Resonant User' },
+                        account: { id: realUser.email || 'user', label: realUser.name || realUser.email || 'DevSwat User' },
                         scopes: ['profile'],
                     }]);
                 displayName = realUser.name || realUser.email || displayName;
@@ -176,7 +176,7 @@ class ResonantAuthService {
             }
         }
         catch { /* use provided info */ }
-        vscode.window.showInformationMessage(`Resonant IDE: Signed in as ${displayName}`);
+        vscode.window.showInformationMessage(`DevSwat IDE: Signed in as ${displayName}`);
     }
     async _fetchUserInfo(token) {
         // Use the last working auth domain (set during login)
@@ -232,7 +232,7 @@ class ResonantAuthService {
                     if (token) {
                         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
                         res.end([
-                            '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resonant IDE</title>',
+                            '<!DOCTYPE html><html><head><meta charset="utf-8"><title>DevSwat IDE</title>',
                             '<style>',
                             '*{margin:0;padding:0;box-sizing:border-box}',
                             'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a0f;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}',
@@ -244,12 +244,12 @@ class ResonantAuthService {
                             'p{font-size:15px;color:rgba(255,255,255,0.6);font-weight:400;line-height:1.5}',
                             '.sub{margin-top:16px;font-size:13px;color:rgba(255,255,255,0.3);transition:opacity 0.3s}',
                             '</style></head><body>',
-                            '<div class="watermark">RESONANT</div>',
+                            '<div class="watermark">DEVSWAT</div>',
                             '<div class="card">',
                             '<div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>',
                             '<h2>Signed In</h2>',
                             '<p>You are signed in!</p>',
-                            '<p class="sub">You can close this tab and return to Resonant IDE.</p>',
+                            '<p class="sub">You can close this tab and return to DevSwat IDE.</p>',
                             '</div>',
                             '<script>setTimeout(function(){try{window.close()}catch(e){}},2000)</script>',
                             '</body></html>',
@@ -308,7 +308,7 @@ class ResonantAuthService {
             if (totalElapsed > MAX_POLL_DURATION_MS) {
                 console.log('[Resonant Auth] Poll timeout — giving up');
                 clearInterval(timer);
-                vscode.window.showWarningMessage('Resonant IDE: Login timed out. Please try again.', 'Retry').then(action => {
+                vscode.window.showWarningMessage('DevSwat IDE: Login timed out. Please try again.', 'Retry').then(action => {
                     if (action === 'Retry') {
                         vscode.commands.executeCommand('resonant.login');
                     }
@@ -343,3 +343,4 @@ class ResonantAuthService {
     }
 }
 exports.ResonantAuthService = ResonantAuthService;
+//# sourceMappingURL=authService.js.map

@@ -164,11 +164,11 @@ registerAction2(ToggleSidebarVisibilityAction);
 registerAction2(ToggleSecondarySidebarVisibilityAction);
 registerAction2(TogglePanelVisibilityAction);
 
-// Resonant IDE Profile / Account button in title bar right
+// DevSwat IDE Profile / Account button in title bar right
 MenuRegistry.appendMenuItem(Menus.TitleBarRightLayout, {
 	command: {
 		id: 'resonant.openSettingsPanel',
-		title: localize('resonantProfile', "Resonant IDE Profile"),
+		title: localize('resonantProfile', "DevSwat IDE Profile"),
 		icon: Codicon.account,
 	},
 	when: ContextKeyExpr.and(IsAuxiliaryWindowContext.toNegated(), SessionsWelcomeVisibleContext.toNegated()),

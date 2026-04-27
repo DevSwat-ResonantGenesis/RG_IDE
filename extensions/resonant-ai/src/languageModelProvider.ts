@@ -60,11 +60,11 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 
 	/** Static fallback model — always returned immediately if HTTP fails */
 	private static readonly FALLBACK_MODEL = {
-		id: 'resonant-groq-llama-3.3-70b-versatile',
+		id: 'devswat-groq-llama-3.3-70b-versatile',
 		name: 'Groq — llama-3.3-70b-versatile',
 		family: 'groq',
 		version: 'llama-3.3-70b-versatile',
-		tooltip: 'Resonant Genesis — Groq',
+		tooltip: 'DevSwat \u2014 Groq',
 		maxInputTokens: 128000,
 		maxOutputTokens: 32768,
 		isDefault: true,
@@ -276,7 +276,7 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 		// System prompt — establishes identity and agentic capabilities
 		const systemPrompt: Record<string, unknown> = {
 			role: 'system',
-			content: `You are DevSwat AI — a powerful agentic coding assistant inside Resonant IDE by Resonant Genesis.
+			content: `You are DevSwat AI — a powerful agentic coding assistant inside DevSwat IDE by DevSwat.
 You are pair-programming with the user. Your goal is to take action, not describe what you would do.
 
 ## COMMUNICATION
@@ -309,7 +309,7 @@ You are pair-programming with the user. Your goal is to take action, not describ
 - For destructive operations (file deletion, git push, deploy), confirm with the user first.
 - Never expose API keys or credentials in responses.
 
-You are DevSwat AI by Resonant Genesis. Not GPT, Claude, Llama, or any other base model.`,
+You are DevSwat AI by DevSwat. Not GPT, Claude, Llama, or any other base model.`,
 		};
 
 		// Convert VS Code messages to OpenAI format, prepend system prompt
@@ -656,7 +656,7 @@ You are DevSwat AI by Resonant Genesis. Not GPT, Claude, Llama, or any other bas
 
 				case 'error':
 					progress.report(new vscode.LanguageModelTextPart(
-						`\n\n⚠️ Error from Resonant Genesis: ${payload.error}\n`,
+						`\n\n⚠️ Error from DevSwat: ${payload.error}\n`,
 					));
 					break;
 

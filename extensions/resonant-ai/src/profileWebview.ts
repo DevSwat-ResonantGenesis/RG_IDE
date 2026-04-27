@@ -32,7 +32,7 @@ export class ProfileWebviewProvider {
 
 		this.panel = vscode.window.createWebviewPanel(
 			'resonantProfile',
-			'Resonant Genesis — Profile',
+			'DevSwat — Profile',
 			vscode.ViewColumn.One,
 			{
 				enableScripts: true,
@@ -120,7 +120,7 @@ export class ProfileWebviewProvider {
 	private getSignedOutHtml(): string {
 		return `<!DOCTYPE html><html><head><style>${this.getStyles()}</style></head>
 		<body><div class="container">
-			<div class="header"><h1>Resonant Genesis</h1><p class="subtitle">You are not signed in.</p></div>
+			<div class="header"><h1>DevSwat</h1><p class="subtitle">You are not signed in.</p></div>
 			<div class="card"><p>Sign in to view your profile and account settings.</p></div>
 		</div></body></html>`;
 	}
@@ -128,7 +128,7 @@ export class ProfileWebviewProvider {
 	private getErrorHtml(error: string): string {
 		return `<!DOCTYPE html><html><head><style>${this.getStyles()}</style></head>
 		<body><div class="container">
-			<div class="header"><h1>Resonant Genesis</h1></div>
+			<div class="header"><h1>DevSwat</h1></div>
 			<div class="card error"><p>Failed to load profile: ${error}</p>
 			<button onclick="postMessage('refresh')">Retry</button></div>
 		</div><script>const vscode=acquireVsCodeApi();function postMessage(cmd){vscode.postMessage({command:cmd})}</script></body></html>`;
@@ -145,7 +145,7 @@ export class ProfileWebviewProvider {
 			<div class="header">
 				<div class="avatar">${initials}</div>
 				<div>
-					<h1>${p.full_name || p.email || 'Resonant User'}</h1>
+					<h1>${p.full_name || p.email || 'DevSwat User'}</h1>
 					<p class="subtitle">${p.email}</p>
 					<div class="meta">${tierBadge} <span class="role">${p.role}</span></div>
 				</div>

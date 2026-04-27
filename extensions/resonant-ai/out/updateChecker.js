@@ -92,7 +92,7 @@ async function checkForUpdates(context) {
         if (remind) {
             items.push(remind);
         }
-        const choice = await vscode.window.showInformationMessage(`Resonant IDE ${result.latest_version} is available! (current: ${CURRENT_VERSION})`, ...items);
+        const choice = await vscode.window.showInformationMessage(`DevSwat IDE ${result.latest_version} is available! (current: ${CURRENT_VERSION})`, ...items);
         if (choice === action && result.download_url) {
             vscode.env.openExternal(vscode.Uri.parse(result.download_url));
         }
@@ -110,7 +110,7 @@ async function checkForUpdates(context) {
     }
 }
 function showReleaseNotes(notes, version, changes) {
-    let content = notes || `# Resonant IDE ${version}\n\n`;
+    let content = notes || `# DevSwat IDE ${version}\n\n`;
     if (changes.length > 0 && !notes) {
         content += '## Changes\n\n';
         for (const c of changes) {
@@ -202,3 +202,4 @@ function markdownToHtml(md) {
         .replace(/\n\n/g, '<br><br>')
         .replace(/\n/g, '\n');
 }
+//# sourceMappingURL=updateChecker.js.map

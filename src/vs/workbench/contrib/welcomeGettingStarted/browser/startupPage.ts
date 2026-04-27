@@ -227,5 +227,5 @@ export class StartupPageRunnerContribution extends Disposable implements IWorkbe
 }
 
 function isStartupPageEnabled(_configurationService: IConfigurationService, _contextService: IWorkspaceContextService, _environmentService: IWorkbenchEnvironmentService) {
-	return false; // Resonant IDE: welcome page disabled
+	return false; // DevSwat IDE: welcome page disabled
 }

@@ -135,7 +135,7 @@ class ResonantChatViewProvider {
                 loops++;
                 this._postStep('status', { message: `Loop ${loops}/${maxLoops} — calling LLM...` });
                 // Build messages for LLM — system prompt is server-side
-                let systemContent = 'You are Resonant AI, a coding assistant. Use your tools to help the user.';
+                let systemContent = 'You are DevSwat AI, a coding assistant. Use your tools to help the user.';
                 try {
                     const memoryContext = await (0, toolExecutor_1.retrieveRelevantMemories)(text);
                     if (memoryContext)
@@ -453,7 +453,7 @@ cursor: pointer; font-size: 13px; font-weight: 600;
 </head>
 <body>
 <div id="header">
-<h3>Resonant AI</h3>
+<h3>DevSwat AI</h3>
 <div class="header-actions">
 	<button id="newBtn" title="New conversation">+ New</button>
 </div>
@@ -467,9 +467,9 @@ cursor: pointer; font-size: 13px; font-weight: 600;
 
 <!-- Login screen (shown when NOT logged in) -->
 <div id="loginScreen">
-<h2>Resonant AI</h2>
-<p>Sign in to your Resonant Genesis account to use AI-powered coding assistance with 59 local tools.</p>
-<button class="login-btn" id="loginBtn">Sign in with Resonant Genesis</button>
+<h2>DevSwat AI</h2>
+<p>Sign in to your DevSwat account to use AI-powered coding assistance with 59 local tools.</p>
+<button class="login-btn" id="loginBtn">Sign in with DevSwat</button>
 <button class="login-btn secondary" id="apiKeyBtn">Use API Key</button>
 <p style="font-size: 10px; opacity: 0.5; margin-top: 8px;">No account? <a href="https://dev-swat.com/signup" style="color: var(--vscode-textLink-foreground);">Sign up free</a></p>
 </div>
@@ -868,3 +868,4 @@ if (msg.type === 'step') {
     }
 }
 exports.ResonantChatViewProvider = ResonantChatViewProvider;
+//# sourceMappingURL=chatViewProvider.js.map

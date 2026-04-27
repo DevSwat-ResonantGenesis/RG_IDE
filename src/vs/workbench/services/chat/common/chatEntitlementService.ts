@@ -191,15 +191,15 @@ export function isProUser(chatEntitlement: ChatEntitlement): boolean {
 export function getChatPlanName(chatEntitlement: ChatEntitlement): string {
 	switch (chatEntitlement) {
 		case ChatEntitlement.Pro:
-			return localize('plan.proName', 'Resonant Pro');
+			return localize('plan.proName', 'DevSwat Pro');
 		case ChatEntitlement.ProPlus:
-			return localize('plan.proPlusName', 'Resonant Pro+');
+			return localize('plan.proPlusName', 'DevSwat Pro+');
 		case ChatEntitlement.Business:
-			return localize('plan.businessName', 'Resonant Business');
+			return localize('plan.businessName', 'DevSwat Business');
 		case ChatEntitlement.Enterprise:
-			return localize('plan.enterpriseName', 'Resonant Enterprise');
+			return localize('plan.enterpriseName', 'DevSwat Enterprise');
 		default:
-			return localize('plan.freeName', 'Resonant Free');
+			return localize('plan.freeName', 'DevSwat Free');
 	}
 }
 

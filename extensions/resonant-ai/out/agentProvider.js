@@ -70,7 +70,7 @@ class ResonantAgentProvider {
         }
         try {
             const agents = await this.fetchAgents(token);
-            console.log(`[Resonant AI] Fetched ${agents.length} user agents`);
+            console.log(`[DevSwat AI] Fetched ${agents.length} user agents`);
             for (const agent of agents) {
                 if (!agent.is_active) {
                     continue;
@@ -79,7 +79,7 @@ class ResonantAgentProvider {
             }
         }
         catch (err) {
-            console.error('[Resonant AI] Failed to fetch agents:', err);
+            console.error('[DevSwat AI] Failed to fetch agents:', err);
         }
     }
     registerAgent(agent, token) {
@@ -88,7 +88,7 @@ class ResonantAgentProvider {
         const participantId = `resonant-genesis.agent-${safeId}`;
         // Skip if already registered (prevents "Agent already has implementation" errors)
         if (this.registeredIds.has(participantId)) {
-            console.log(`[Resonant AI] Agent "${agent.name}" already registered, skipping`);
+            console.log(`[DevSwat AI] Agent "${agent.name}" already registered, skipping`);
             return;
         }
         try {
@@ -116,7 +116,7 @@ class ResonantAgentProvider {
             this.context.subscriptions.push(participant);
         }
         catch (err) {
-            console.warn(`[Resonant AI] Failed to register agent "${agent.name}":`, err);
+            console.warn(`[DevSwat AI] Failed to register agent "${agent.name}":`, err);
         }
     }
     async streamAgentResponse(agent, prompt, token, response, cancelToken) {
@@ -241,3 +241,4 @@ class ResonantAgentProvider {
     }
 }
 exports.ResonantAgentProvider = ResonantAgentProvider;
+//# sourceMappingURL=agentProvider.js.map

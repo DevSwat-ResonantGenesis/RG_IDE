@@ -62,7 +62,7 @@ async function checkForUpdates(context: vscode.ExtensionContext) {
 		if (remind) { items.push(remind); }
 
 		const choice = await vscode.window.showInformationMessage(
-			`Resonant IDE ${result.latest_version} is available! (current: ${CURRENT_VERSION})`,
+			`DevSwat IDE ${result.latest_version} is available! (current: ${CURRENT_VERSION})`,
 			...items,
 		);
 
@@ -81,7 +81,7 @@ async function checkForUpdates(context: vscode.ExtensionContext) {
 }
 
 function showReleaseNotes(notes: string, version: string, changes: Array<{ type: string; description: string }>) {
-	let content = notes || `# Resonant IDE ${version}\n\n`;
+	let content = notes || `# DevSwat IDE ${version}\n\n`;
 	if (changes.length > 0 && !notes) {
 		content += '## Changes\n\n';
 		for (const c of changes) {
