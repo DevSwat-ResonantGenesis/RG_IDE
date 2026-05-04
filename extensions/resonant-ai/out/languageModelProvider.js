@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResonantLanguageModelProvider = void 0;
 /*---------------------------------------------------------------------------------------------
  *  Resonant Genesis Language Model Provider
- *  Fetches real providers from /resonant-chat/providers and registers each
+ *  Fetches real providers from /api/v1/ide/providers and registers each
  *  available model in the IDE's built-in Chat model picker.
  *  Routes requests through /api/v1/ide/completions with provider+model params.
  *--------------------------------------------------------------------------------------------*/
@@ -72,11 +72,11 @@ class ResonantLanguageModelProvider {
     }
     /** Static fallback model — always returned immediately if HTTP fails */
     static FALLBACK_MODEL = {
-        id: 'devswat-groq-llama-3.3-70b-versatile',
-        name: 'Groq — llama-3.3-70b-versatile',
-        family: 'groq',
-        version: 'llama-3.3-70b-versatile',
-        tooltip: 'DevSwat \u2014 Groq',
+        id: 'resonant-tokenrouter-auto',
+        name: 'DevSwat — Auto (Unified Router)',
+        family: 'tokenrouter',
+        version: 'auto',
+        tooltip: 'DevSwat \u2014 Auto-routing via UnifiedLLMClient',
         maxInputTokens: 128000,
         maxOutputTokens: 32768,
         isDefault: true,
@@ -100,7 +100,7 @@ class ResonantLanguageModelProvider {
             // Non-critical — user may not be logged in yet
         }
         const models = [];
-        let isFirst = true;
+        let isFirstOnline = true;
         const addedProviders = new Set();
         const byokSet = new Set(byokProviders);
         // Also check has_user_key from providers response (DB-backed)
@@ -121,6 +121,10 @@ class ResonantLanguageModelProvider {
             }
             addedProviders.add(p.provider_key);
             const statusHint = isOnline ? '' : ' (BYOK)';
+            const makeDefault = isOnline && isFirstOnline;
+            if (makeDefault) {
+                isFirstOnline = false;
+            }
             models.push({
                 id: `resonant-${p.provider_key}-${p.model}`,
                 name: `${p.name} — ${p.model}${statusHint}`,
@@ -129,16 +133,13 @@ class ResonantLanguageModelProvider {
                 tooltip: `${p.description || p.name}${p.latency ? ' (' + p.latency + 'ms)' : ''}`,
                 maxInputTokens: this.getMaxInputTokens(p.model),
                 maxOutputTokens: this.getMaxOutputTokens(p.model),
-                isDefault: isFirst,
+                isDefault: makeDefault,
                 isUserSelectable: true,
                 capabilities: {
                     toolCalling: p.capabilities?.includes('coding') ?? true,
                     imageInput: p.capabilities?.includes('vision') ?? false,
                 },
             });
-            if (isFirst) {
-                isFirst = false;
-            }
             // Add alternate models for this provider
             for (const m of (p.models || [])) {
                 if (m === p.model) {
@@ -190,13 +191,10 @@ class ResonantLanguageModelProvider {
                 tooltip: `${def.name} — Your API key`,
                 maxInputTokens: this.getMaxInputTokens(def.model),
                 maxOutputTokens: this.getMaxOutputTokens(def.model),
-                isDefault: isFirst,
+                isDefault: false,
                 isUserSelectable: true,
                 capabilities: { toolCalling: true, imageInput: false },
             });
-            if (isFirst) {
-                isFirst = false;
-            }
             addedProviders.add(provKey);
         }
         // ── Local LLM models (Ollama / LM Studio / llama.cpp) ──
@@ -436,7 +434,7 @@ You are DevSwat AI by DevSwat. Not GPT, Claude, Llama, or any other base model.`
         }
         try {
             const apiUrl = vscode.workspace.getConfiguration('resonant').get('apiUrl', 'https://dev-swat.com');
-            const url = new url_1.URL(`${apiUrl}/resonant-chat/providers`);
+            const url = new url_1.URL(`${apiUrl}/api/v1/ide/providers`);
             const token = await this.getToken();
             const headers = { 'Content-Type': 'application/json' };
             if (token) {
@@ -646,4 +644,3 @@ You are DevSwat AI by DevSwat. Not GPT, Claude, Llama, or any other base model.`
     }
 }
 exports.ResonantLanguageModelProvider = ResonantLanguageModelProvider;
-//# sourceMappingURL=languageModelProvider.js.map

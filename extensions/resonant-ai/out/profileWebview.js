@@ -222,4 +222,3 @@ class ProfileWebviewProvider {
     }
 }
 exports.ProfileWebviewProvider = ProfileWebviewProvider;
-//# sourceMappingURL=profileWebview.js.map

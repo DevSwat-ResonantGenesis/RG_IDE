@@ -276,7 +276,7 @@ export class SettingsPanelProvider {
 
 	private async fetchProviders(): Promise<{ provider_key: string; name: string; available: boolean; status: string; model: string; has_user_key: boolean }[]> {
 		const apiUrl = vscode.workspace.getConfiguration('resonant').get<string>('apiUrl', 'https://dev-swat.com');
-		const url = new URL(`${apiUrl}/resonant-chat/providers`);
+		const url = new URL(`${apiUrl}/api/v1/ide/providers`);
 		const token = await this.getToken();
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 		if (token) {
@@ -339,6 +339,7 @@ export class SettingsPanelProvider {
 
 		// Build providers HTML
 		const allProviders = [
+			{ key: 'tokenrouter', label: 'TokenRouter' },
 			{ key: 'openai', label: 'OpenAI' }, { key: 'anthropic', label: 'Anthropic' },
 			{ key: 'google', label: 'Google AI' }, { key: 'groq', label: 'Groq' },
 			{ key: 'mistral', label: 'Mistral' }, { key: 'deepseek', label: 'DeepSeek' },

@@ -48,8 +48,8 @@ const http = __importStar(require("http"));
 const url_1 = require("url");
 let _apiUrl = '';
 let _authToken = '';
-let _modelName = 'llama-3.3-70b-versatile';
-let _providerKey = 'groq';
+let _modelName = '';
+let _providerKey = '';
 let _enabled = true;
 function setInlineCompletionAuth(apiUrl, authToken) {
     _apiUrl = apiUrl;
@@ -222,4 +222,3 @@ ${suffix.slice(0, 500) ? `=== CODE AFTER CURSOR ===\n${suffix.slice(0, 500)}` : 
         req.end();
     });
 }
-//# sourceMappingURL=inlineCompletionProvider.js.map

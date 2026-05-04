@@ -758,8 +758,8 @@ function activate(context) {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         const workspaceRoot = workspaceFolder || require('os').homedir();
         // Determine selected model from VS Code model picker (must be before auth check)
-        let providerKey = 'groq';
-        let modelName = 'llama-3.3-70b-versatile';
+        let providerKey = '';
+        let modelName = '';
         try {
             // VS Code Chat API: request.model is the user's ACTUAL selection from the picker
             const selectedId = request.model?.id;
@@ -1106,4 +1106,3 @@ function deactivate() {
     (0, interactiveTerminal_1.disposeAllSessions)();
     console.log('[DevSwat AI] Extension deactivated.');
 }
-//# sourceMappingURL=extension.js.map

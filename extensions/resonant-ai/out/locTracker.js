@@ -237,4 +237,3 @@ function detectLanguage(filePath) {
     };
     return map[ext] || ext.toUpperCase() || 'Unknown';
 }
-//# sourceMappingURL=locTracker.js.map

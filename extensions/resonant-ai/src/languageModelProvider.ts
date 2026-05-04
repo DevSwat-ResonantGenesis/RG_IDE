@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------------------------
  *  Resonant Genesis Language Model Provider
- *  Fetches real providers from /resonant-chat/providers and registers each
+ *  Fetches real providers from /api/v1/ide/providers and registers each
  *  available model in the IDE's built-in Chat model picker.
  *  Routes requests through /api/v1/ide/completions with provider+model params.
  *--------------------------------------------------------------------------------------------*/
@@ -60,11 +60,11 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 
 	/** Static fallback model — always returned immediately if HTTP fails */
 	private static readonly FALLBACK_MODEL = {
-		id: 'devswat-groq-llama-3.3-70b-versatile',
-		name: 'Groq — llama-3.3-70b-versatile',
-		family: 'groq',
-		version: 'llama-3.3-70b-versatile',
-		tooltip: 'DevSwat \u2014 Groq',
+		id: 'resonant-tokenrouter-auto',
+		name: 'DevSwat — Auto (Unified Router)',
+		family: 'tokenrouter',
+		version: 'auto',
+		tooltip: 'DevSwat \u2014 Auto-routing via UnifiedLLMClient',
 		maxInputTokens: 128000,
 		maxOutputTokens: 32768,
 		isDefault: true,
@@ -92,7 +92,7 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 		}
 
 		const models: vscode.LanguageModelChatInformation[] = [];
-		let isFirst = true;
+		let isFirstOnline = true;
 		const addedProviders = new Set<string>();
 		const byokSet = new Set(byokProviders);
 
@@ -114,6 +114,9 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 			addedProviders.add(p.provider_key);
 			const statusHint = isOnline ? '' : ' (BYOK)';
 
+			const makeDefault = isOnline && isFirstOnline;
+			if (makeDefault) { isFirstOnline = false; }
+
 			models.push({
 				id: `resonant-${p.provider_key}-${p.model}`,
 				name: `${p.name} — ${p.model}${statusHint}`,
@@ -122,14 +125,13 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 				tooltip: `${p.description || p.name}${p.latency ? ' (' + p.latency + 'ms)' : ''}`,
 				maxInputTokens: this.getMaxInputTokens(p.model),
 				maxOutputTokens: this.getMaxOutputTokens(p.model),
-				isDefault: isFirst,
+				isDefault: makeDefault,
 				isUserSelectable: true,
 				capabilities: {
 					toolCalling: p.capabilities?.includes('coding') ?? true,
 					imageInput: p.capabilities?.includes('vision') ?? false,
 				},
 			} as any);
-			if (isFirst) { isFirst = false; }
 
 			// Add alternate models for this provider
 			for (const m of (p.models || [])) {
@@ -178,11 +180,10 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 				tooltip: `${def.name} — Your API key`,
 				maxInputTokens: this.getMaxInputTokens(def.model),
 				maxOutputTokens: this.getMaxOutputTokens(def.model),
-				isDefault: isFirst,
+				isDefault: false,
 				isUserSelectable: true,
 				capabilities: { toolCalling: true, imageInput: false },
 			} as any);
-			if (isFirst) { isFirst = false; }
 			addedProviders.add(provKey);
 		}
 
@@ -463,7 +464,7 @@ You are DevSwat AI by DevSwat. Not GPT, Claude, Llama, or any other base model.`
 		}
 		try {
 			const apiUrl = vscode.workspace.getConfiguration('resonant').get<string>('apiUrl', 'https://dev-swat.com');
-			const url = new URL(`${apiUrl}/resonant-chat/providers`);
+			const url = new URL(`${apiUrl}/api/v1/ide/providers`);
 			const token = await this.getToken();
 			const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 			if (token) {

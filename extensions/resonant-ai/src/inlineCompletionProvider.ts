@@ -10,8 +10,8 @@ import { URL } from 'url';
 
 let _apiUrl = '';
 let _authToken = '';
-let _modelName = 'llama-3.3-70b-versatile';
-let _providerKey = 'groq';
+let _modelName = '';
+let _providerKey = '';
 let _enabled = true;
 
 export function setInlineCompletionAuth(apiUrl: string, authToken: string) {

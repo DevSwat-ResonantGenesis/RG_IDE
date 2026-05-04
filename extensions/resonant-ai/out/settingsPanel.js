@@ -323,7 +323,7 @@ class SettingsPanelProvider {
     }
     async fetchProviders() {
         const apiUrl = vscode.workspace.getConfiguration('resonant').get('apiUrl', 'https://dev-swat.com');
-        const url = new URL(`${apiUrl}/resonant-chat/providers`);
+        const url = new URL(`${apiUrl}/api/v1/ide/providers`);
         const token = await this.getToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) {
@@ -384,6 +384,7 @@ class SettingsPanelProvider {
         const userKeyProviders = new Set(userKeys.map(k => k.provider));
         // Build providers HTML
         const allProviders = [
+            { key: 'tokenrouter', label: 'TokenRouter' },
             { key: 'openai', label: 'OpenAI' }, { key: 'anthropic', label: 'Anthropic' },
             { key: 'google', label: 'Google AI' }, { key: 'groq', label: 'Groq' },
             { key: 'mistral', label: 'Mistral' }, { key: 'deepseek', label: 'DeepSeek' },
@@ -609,4 +610,3 @@ class SettingsPanelProvider {
     }
 }
 exports.SettingsPanelProvider = SettingsPanelProvider;
-//# sourceMappingURL=settingsPanel.js.map
