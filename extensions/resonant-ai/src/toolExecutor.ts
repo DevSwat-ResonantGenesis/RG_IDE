@@ -71,8 +71,8 @@ export async function executeToolCall(toolCall: ToolCall, workspaceRoot: string)
       case 'multi_edit': return await execMultiEdit(resolvePath(args.path, workspaceRoot), args.edits, args.explanation);
       case 'file_list': return await execFileList(resolvePath(args.path, workspaceRoot) || workspaceRoot);
       case 'file_delete': return await execFileDelete(resolvePath(args.path, workspaceRoot));
-      case 'grep_search': return await execGrepSearch(args.path || workspaceRoot, args.pattern, args.include, args.case_sensitive, args.match_per_line, args.fixed_strings);
-      case 'find_by_name': return await execFindByName(args.path || workspaceRoot, args.pattern, args.type, args.max_depth, args.extensions, args.excludes, args.full_path);
+      case 'grep_search': return await execGrepSearch(resolvePath(args.path, workspaceRoot), args.pattern, args.include, args.case_sensitive, args.match_per_line, args.fixed_strings);
+      case 'find_by_name': return await execFindByName(resolvePath(args.path, workspaceRoot), args.pattern, args.type, args.max_depth, args.extensions, args.excludes, args.full_path);
       case 'run_command': return await execRunCommand(args.command, args.cwd || workspaceRoot, args.blocking, args.wait_ms_before_async, args.safe_to_auto_run);
       case 'read_terminal': return await execReadTerminal(args.process_id, args.name);
       case 'search_web': return await execSearchWeb(args.query, args.domain);
@@ -88,7 +88,7 @@ export async function executeToolCall(toolCall: ToolCall, workspaceRoot: string)
       case 'read_notebook': return await execReadNotebook(args.path);
       case 'edit_notebook': return await execEditNotebook(args.path, args.cell_number, args.new_source, args.cell_type, args.edit_mode);
       case 'file_move': return await execFileMove(resolvePath(args.source, workspaceRoot), resolvePath(args.destination, workspaceRoot));
-      case 'code_search': return await execCodeSearch(args.query, args.path || workspaceRoot);
+      case 'code_search': return await execCodeSearch(args.query, resolvePath(args.path, workspaceRoot));
       case 'command_status': return await execCommandStatus(args.command_id, args.wait_seconds, args.output_character_count);
       case 'view_content_chunk': return await execViewContentChunk(args.document_id, args.position);
       case 'trajectory_search': return await execTrajectorySearch(args.query, args.conversation_id);

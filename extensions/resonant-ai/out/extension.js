@@ -871,7 +871,18 @@ function activate(context) {
                         }
                     }
                     if (text) {
-                        let cleaned = text.replace(/\n\n---\n\*🔧[\s\S]*?\*\n?/g, '\n').replace(/\n\*✏️ Session LOC:[^\n]*\n?/g, '\n').trim();
+                        // Strip tool call UI, LOC stats, and other non-content noise
+                        let cleaned = text
+                            .replace(/\n\n> ⚡[^\n]*\n/g, '\n') // tool call labels
+                            .replace(/```[\s\S]*?```/g, '') // code blocks (tool previews)
+                            .replace(/\n\n---\n\*🔧[\s\S]*?\*\n?/g, '\n')
+                            .replace(/\n\*✏️ Session LOC:[^\n]*\n?/g, '\n')
+                            .replace(/\n{3,}/g, '\n\n') // collapse multiple newlines
+                            .trim();
+                        // Truncate very long assistant responses to keep context manageable
+                        if (cleaned.length > 1500) {
+                            cleaned = cleaned.slice(0, 1500) + '\n... (truncated)';
+                        }
                         if (cleaned) {
                             chatHistoryContext.push({ role: 'assistant', content: cleaned });
                         }
