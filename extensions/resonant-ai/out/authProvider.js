@@ -148,24 +148,24 @@ class ResonantAuthenticationProvider {
                 clearTimeout(timer);
                 reject(err);
             });
-            // Gentle fallback poll: backend rg_desktop_port cookie handles OAuth redirect.
-            // This poll only covers credential logins where frontend redirect may not fire.
+            // Aggressive poll: after 5s, re-open the callback URL every 2s.
+            // Once user logs in on browser, cookie is set and next poll succeeds.
             let pollElapsed = 0;
             const retryTimer = setInterval(async () => {
-                pollElapsed += 10000;
+                pollElapsed += 2000;
                 if (resolved || !this._localServer) {
                     clearInterval(retryTimer);
                     return;
                 }
-                if (pollElapsed > 300000) {
+                if (pollElapsed > 120000) {
                     clearInterval(retryTimer);
                     return;
-                } // 5min max
-                if (pollElapsed >= 15000) {
-                    console.log(`[Resonant Auth Provider] Fallback poll ${Math.round(pollElapsed / 1000)}s — re-opening callback`);
+                } // 2min max
+                if (pollElapsed >= 5000) {
+                    console.log(`[Resonant Auth Provider] Poll ${Math.round(pollElapsed / 1000)}s — re-opening callback`);
                     await vscode.env.openExternal(vscode.Uri.parse(authUrl));
                 }
-            }, 10000);
+            }, 2000);
         });
     }
     async _fetchUser(apiUrl, token) {
@@ -205,3 +205,4 @@ class ResonantAuthenticationProvider {
     }
 }
 exports.ResonantAuthenticationProvider = ResonantAuthenticationProvider;
+//# sourceMappingURL=authProvider.js.map

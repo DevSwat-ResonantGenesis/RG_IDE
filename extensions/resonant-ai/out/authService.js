@@ -281,15 +281,15 @@ class ResonantAuthService {
         });
     }
     /**
-     * Gentle poll: wait for OAuth to complete, then re-open the desktop-callback
-     * URL periodically. The backend sets an rg_desktop_port cookie so OAuth
-     * redirects the token to us automatically. This poll is only a fallback
-     * for credential logins where the frontend redirect might not fire.
+     * Aggressive poll: after initial browser open, wait 5s then re-open the
+     * desktop-callback URL every 2s. Once the user logs in on the browser
+     * the cookie is set — next poll redirects to localhost and token arrives.
+     * Stops immediately when token is received. No user interaction needed.
      */
     _pollForTokenAndRetry(authUrl, _port) {
-        const INITIAL_WAIT_MS = 15000; // 15s — give OAuth time to complete
-        const POLL_INTERVAL_MS = 8000; // 8s between retries (not aggressive)
-        const MAX_POLL_DURATION_MS = 300000; // 5 minutes total
+        const INITIAL_WAIT_MS = 5000;
+        const POLL_INTERVAL_MS = 2000;
+        const MAX_POLL_DURATION_MS = 120000; // 2 minutes total
         let totalElapsed = 0;
         const timer = setInterval(async () => {
             totalElapsed += POLL_INTERVAL_MS;
@@ -316,9 +316,9 @@ class ResonantAuthService {
                 this._closeLocalServer();
                 return;
             }
-            // After initial wait, re-open the auth URL as a fallback
+            // After initial wait, silently re-open the auth URL every interval
             if (totalElapsed >= INITIAL_WAIT_MS) {
-                console.log(`[Resonant Auth] Fallback poll ${Math.round(totalElapsed / 1000)}s — re-opening callback`);
+                console.log(`[Resonant Auth] Poll ${Math.round(totalElapsed / 1000)}s — re-opening callback`);
                 await vscode.env.openExternal(vscode.Uri.parse(authUrl));
             }
         }, POLL_INTERVAL_MS);
@@ -343,3 +343,4 @@ class ResonantAuthService {
     }
 }
 exports.ResonantAuthService = ResonantAuthService;
+//# sourceMappingURL=authService.js.map

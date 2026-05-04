@@ -60,11 +60,11 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 
 	/** Static fallback model — always returned immediately if HTTP fails */
 	private static readonly FALLBACK_MODEL = {
-		id: 'resonant-tokenrouter-auto',
-		name: 'DevSwat — Auto (Unified Router)',
-		family: 'tokenrouter',
-		version: 'auto',
-		tooltip: 'DevSwat \u2014 Auto-routing via UnifiedLLMClient',
+		id: 'devswat-groq-llama-3.3-70b-versatile',
+		name: 'Groq — llama-3.3-70b-versatile',
+		family: 'groq',
+		version: 'llama-3.3-70b-versatile',
+		tooltip: 'DevSwat \u2014 Groq',
 		maxInputTokens: 128000,
 		maxOutputTokens: 32768,
 		isDefault: true,

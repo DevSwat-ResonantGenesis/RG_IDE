@@ -660,8 +660,8 @@ export function activate(context: vscode.ExtensionContext) {
 			const workspaceRoot = workspaceFolder || require('os').homedir();
 
 			// Determine selected model from VS Code model picker (must be before auth check)
-			let providerKey = '';
-			let modelName = '';
+			let providerKey = 'groq';
+			let modelName = 'llama-3.3-70b-versatile';
 			try {
 				// VS Code Chat API: request.model is the user's ACTUAL selection from the picker
 				const selectedId: string | undefined = (request as any).model?.id;
@@ -783,7 +783,7 @@ export function activate(context: vscode.ExtensionContext) {
 					prompt: request.prompt,
 					workspace_root: workspaceRoot,
 					active_file: openFile,
-					model_id: providerKey ? `resonant-${providerKey}-${modelName}` : undefined,
+					model_id: `resonant-${providerKey}-${modelName}`,
 					context: chatHistoryContext.slice(-10),
 					max_loops: maxLoops,
 					tools: LOCAL_TOOL_DEFINITIONS,

@@ -609,3 +609,4 @@ class SettingsPanelProvider {
     }
 }
 exports.SettingsPanelProvider = SettingsPanelProvider;
+//# sourceMappingURL=settingsPanel.js.map

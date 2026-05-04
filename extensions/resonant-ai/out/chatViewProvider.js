@@ -868,3 +868,4 @@ if (msg.type === 'step') {
     }
 }
 exports.ResonantChatViewProvider = ResonantChatViewProvider;
+//# sourceMappingURL=chatViewProvider.js.map
