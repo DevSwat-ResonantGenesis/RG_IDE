@@ -92,7 +92,7 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 		}
 
 		const models: vscode.LanguageModelChatInformation[] = [];
-		let isFirstOnline = true;
+		let isFirst = true;
 		const addedProviders = new Set<string>();
 		const byokSet = new Set(byokProviders);
 
@@ -113,8 +113,6 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 
 			addedProviders.add(p.provider_key);
 			const statusHint = isOnline ? '' : ' (BYOK)';
-			const makeDefault = isOnline && isFirstOnline;
-			if (makeDefault) { isFirstOnline = false; }
 
 			models.push({
 				id: `resonant-${p.provider_key}-${p.model}`,
@@ -124,13 +122,14 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 				tooltip: `${p.description || p.name}${p.latency ? ' (' + p.latency + 'ms)' : ''}`,
 				maxInputTokens: this.getMaxInputTokens(p.model),
 				maxOutputTokens: this.getMaxOutputTokens(p.model),
-				isDefault: makeDefault,
+				isDefault: isFirst,
 				isUserSelectable: true,
 				capabilities: {
 					toolCalling: p.capabilities?.includes('coding') ?? true,
 					imageInput: p.capabilities?.includes('vision') ?? false,
 				},
 			} as any);
+			if (isFirst) { isFirst = false; }
 
 			// Add alternate models for this provider
 			for (const m of (p.models || [])) {
@@ -179,11 +178,11 @@ export class ResonantLanguageModelProvider implements vscode.LanguageModelChatPr
 				tooltip: `${def.name} — Your API key`,
 				maxInputTokens: this.getMaxInputTokens(def.model),
 				maxOutputTokens: this.getMaxOutputTokens(def.model),
-				isDefault: isFirstOnline,
+				isDefault: isFirst,
 				isUserSelectable: true,
 				capabilities: { toolCalling: true, imageInput: false },
 			} as any);
-			if (isFirstOnline) { isFirstOnline = false; }
+			if (isFirst) { isFirst = false; }
 			addedProviders.add(provKey);
 		}
 
