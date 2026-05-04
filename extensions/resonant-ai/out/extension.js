@@ -1106,4 +1106,3 @@ function deactivate() {
     (0, interactiveTerminal_1.disposeAllSessions)();
     console.log('[DevSwat AI] Extension deactivated.');
 }
-//# sourceMappingURL=extension.js.map

@@ -202,4 +202,3 @@ function markdownToHtml(md) {
         .replace(/\n\n/g, '<br><br>')
         .replace(/\n/g, '\n');
 }
-//# sourceMappingURL=updateChecker.js.map

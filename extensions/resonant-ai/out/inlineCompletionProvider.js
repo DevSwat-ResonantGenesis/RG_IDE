@@ -222,4 +222,3 @@ ${suffix.slice(0, 500) ? `=== CODE AFTER CURSOR ===\n${suffix.slice(0, 500)}` : 
         req.end();
     });
 }
-//# sourceMappingURL=inlineCompletionProvider.js.map

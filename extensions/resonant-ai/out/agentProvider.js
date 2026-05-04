@@ -241,4 +241,3 @@ class ResonantAgentProvider {
     }
 }
 exports.ResonantAgentProvider = ResonantAgentProvider;
-//# sourceMappingURL=agentProvider.js.map
