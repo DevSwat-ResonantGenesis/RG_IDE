@@ -740,8 +740,8 @@ export function activate(context: vscode.ExtensionContext) {
 					return tree;
 				};
 				workspaceLayout = await buildTree(vscode.workspace.workspaceFolders![0].uri, '- ', 0);
-				if (workspaceLayout.length > 4000) {
-					workspaceLayout = workspaceLayout.slice(0, 4000) + '\n... (truncated)';
+				if (workspaceLayout.length > 2000) {
+					workspaceLayout = workspaceLayout.slice(0, 2000) + '\n... (truncated)';
 				}
 			} catch { /* non-critical */ }
 
@@ -777,8 +777,8 @@ export function activate(context: vscode.ExtensionContext) {
 								.replace(/\n{3,}/g, '\n\n')            // collapse multiple newlines
 								.trim();
 							// Truncate very long assistant responses to keep context manageable
-							if (cleaned.length > 1500) {
-								cleaned = cleaned.slice(0, 1500) + '\n... (truncated)';
+							if (cleaned.length > 800) {
+								cleaned = cleaned.slice(0, 800) + '\n... (truncated)';
 							}
 							if (cleaned) { chatHistoryContext.push({ role: 'assistant', content: cleaned }); }
 						}
