@@ -757,10 +757,12 @@ Mass imbalance              →    Flag architectural drift
 ### One-Line Install (macOS)
 
 ```bash
-bash -lc 'set -e; export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash; . "$NVM_DIR/nvm.sh"; [ -d RG_IDE ] || git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git; cd RG_IDE; nvm install; nvm use; npm install; cd extensions/resonant-ai && npm install && npx tsc -p tsconfig.json && cd ../..; npm run compile; ./scripts/code.sh'
+bash <(curl -fsSL https://raw.githubusercontent.com/DevSwat-ResonantGenesis/RG_IDE/main/scripts/install.sh)
 ```
 
-> Important: always launch with `./scripts/code.sh`. Do not open the raw Electron bundle directly (`.build/electron/*.app`), or you'll get an empty Electron shell.
+This will: install nvm + Node 22 if needed → clone or update to latest → build → create a **DevSwat IDE.app** in the project folder → launch.
+
+> You can also double-click `DevSwat IDE.app` from Finder after the first build.
 
 ### Build from Source
 
@@ -769,9 +771,8 @@ bash -lc 'set -e; export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] || curl 
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 source ~/.nvm/nvm.sh
 
-# 2. Clone the repo
-git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git
-cd RG_IDE
+# 2. Clone the repo (or pull latest if already cloned)
+if [ -d RG_IDE ]; then cd RG_IDE && git pull; else git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git && cd RG_IDE; fi
 
 # 3. Install and use the EXACT Node version required (reads .nvmrc)
 nvm install
@@ -794,6 +795,12 @@ npm run compile
 ```
 
 > **Every time you open a new terminal** to work on RG_IDE, run `nvm use` inside the project directory first. It reads `.nvmrc` and switches to the correct Node version automatically.
+
+### Update to Latest
+
+```bash
+cd RG_IDE && git pull && nvm use && npm install && cd extensions/resonant-ai && npm install && npx tsc -p tsconfig.json && cd ../.. && npm run compile && ./scripts/code.sh
+```
 
 The `scripts/code.sh` launcher will:
 1. Download the correct Electron binary (first run only)
