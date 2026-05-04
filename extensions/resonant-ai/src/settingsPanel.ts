@@ -339,12 +339,12 @@ export class SettingsPanelProvider {
 
 		// Build providers HTML
 		const allProviders = [
-			{ key: 'openai', label: 'OpenAI' }, { key: 'anthropic', label: 'Anthropic' },
-			{ key: 'google', label: 'Google AI' }, { key: 'groq', label: 'Groq' },
-			{ key: 'mistral', label: 'Mistral' }, { key: 'deepseek', label: 'DeepSeek' },
-			{ key: 'cohere', label: 'Cohere' }, { key: 'together', label: 'Together AI' },
-			{ key: 'openrouter', label: 'OpenRouter' }, { key: 'perplexity', label: 'Perplexity' },
-			{ key: 'fireworks', label: 'Fireworks' },
+			{ key: 'tokenrouter', label: 'TokenRouter' }, { key: 'openai', label: 'OpenAI' },
+			{ key: 'anthropic', label: 'Anthropic' }, { key: 'google', label: 'Google AI' },
+			{ key: 'groq', label: 'Groq' }, { key: 'mistral', label: 'Mistral' },
+			{ key: 'deepseek', label: 'DeepSeek' }, { key: 'cohere', label: 'Cohere' },
+			{ key: 'together', label: 'Together AI' }, { key: 'openrouter', label: 'OpenRouter' },
+			{ key: 'perplexity', label: 'Perplexity' }, { key: 'fireworks', label: 'Fireworks' },
 		];
 		const liveProviderMap = new Map(providers.map(p => [p.provider_key, p]));
 		const providersHtml = allProviders.map(p => {
