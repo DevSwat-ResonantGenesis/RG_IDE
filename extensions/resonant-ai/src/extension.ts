@@ -756,11 +756,6 @@ export function activate(context: vscode.ExtensionContext) {
 			try {
 				// ═══════════════════════════════════════════════════════════
 				// SERVER-SIDE AGENTIC LOOP — thin client (ALL providers)
-				// Server handles: LLM calls, tool selection, system prompt,
-				// message history, retry logic. Client only renders UI and
-				// executes tools locally when the server requests it.
-				// For local LLM (Ollama): server proxies LLM calls through
-				// the client's local endpoint.
 				// ═══════════════════════════════════════════════════════════
 				const chatHistoryContext: Array<{ role: string; content: string }> = [];
 				for (const turn of chatContext.history) {
@@ -778,6 +773,7 @@ export function activate(context: vscode.ExtensionContext) {
 								.replace(/```[\s\S]*?```/g, '')        // code blocks (tool previews)
 								.replace(/\n\n---\n\*🔧[\s\S]*?\*\n?/g, '\n')
 								.replace(/\n\*✏️ Session LOC:[^\n]*\n?/g, '\n')
+								.replace(/\n\*⚡[^\n]*\n?/g, '\n')
 								.replace(/\n{3,}/g, '\n\n')            // collapse multiple newlines
 								.trim();
 							// Truncate very long assistant responses to keep context manageable
@@ -789,9 +785,29 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				}
 
-				// Build request body — include local LLM info if user selected Ollama
+				// ── Memory retrieval: inject relevant memories into the prompt ──
+				let memoryContext = '';
+				try { memoryContext = await retrieveRelevantMemories(request.prompt); } catch { /* non-critical */ }
+
+				// ── Continue/resume detection: inject last checkpoint if user says "continue" ──
+				const promptLower = request.prompt.toLowerCase().trim();
+				const isContinue = /^(continu|resume|pick up|go on|keep going|do it|yes|proceed|carry on|go ahead)/i.test(promptLower) && promptLower.length < 80;
+				let checkpointContext = '';
+				if (isContinue && chatHistoryContext.length === 0) {
+					// No chat history but user wants to continue — load last checkpoint
+					try {
+						const cpResult = await executeToolCall({ id: 'auto', type: 'function', function: { name: 'load_checkpoint', arguments: '{}' } }, workspaceRoot);
+						const cp = JSON.parse(cpResult);
+						if (cp.latest) {
+							checkpointContext = `\n\n[CHECKPOINT RESTORED — ${cp.latest.timestamp}]\nPrevious session summary: ${cp.latest.summary}\nKey files: ${(cp.latest.key_files || []).join(', ')}\nPending tasks: ${(cp.latest.pending_tasks || []).join(', ')}`;
+						}
+					} catch { /* no checkpoint available */ }
+				}
+
+				// Build request body
+				const enrichedPrompt = request.prompt + memoryContext + checkpointContext;
 				const requestBody: Record<string, unknown> = {
-					prompt: request.prompt,
+					prompt: enrichedPrompt,
 					workspace_root: workspaceRoot,
 					active_file: openFile,
 					model_id: `resonant-${providerKey}-${modelName}`,
@@ -854,6 +870,15 @@ export function activate(context: vscode.ExtensionContext) {
 				const locDelta = getSessionDelta(locStart);
 				if (locDelta.calls > 0) {
 					response.markdown(`\n*✏️ Session LOC: ${locDelta.written} written, ${locDelta.edited} edited, ${locDelta.net} net*\n`);
+				}
+
+				// Auto-save checkpoint after each substantive turn for session continuity
+				if (totalToolCalls > 0) {
+					try {
+						const lastAssistantText = chatHistoryContext.filter(m => m.role === 'assistant').pop()?.content || '';
+						const summary = `User asked: "${request.prompt.slice(0, 200)}". ${loops} loops, ${totalToolCalls} tool calls. ${lastAssistantText.slice(0, 300)}`;
+						await executeToolCall({ id: 'auto', type: 'function', function: { name: 'save_checkpoint', arguments: JSON.stringify({ summary, pending_tasks: [] }) } }, workspaceRoot);
+					} catch { /* non-critical */ }
 				}
 
 				// Flush LOC events after each conversation turn
