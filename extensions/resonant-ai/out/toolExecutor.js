@@ -35,9 +35,11 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setAskUserCallback = setAskUserCallback;
 exports.setAuthInfo = setAuthInfo;
+exports.setApiUrl = setApiUrl;
 exports.registerTerminal = registerTerminal;
 exports.appendTerminalOutput = appendTerminalOutput;
 exports.executeToolCall = executeToolCall;
+exports.setEmbeddedTerminal = setEmbeddedTerminal;
 exports.setGlobalState = setGlobalState;
 exports.storeConversationSummary = storeConversationSummary;
 exports.retrieveRelevantMemories = retrieveRelevantMemories;
@@ -58,9 +60,62 @@ function setAskUserCallback(cb) {
 // Auth info for server-backed memory
 let _authToken = null;
 let _authDomain = null;
+let _apiUrl = 'https://dev-swat.com';
 function setAuthInfo(token, domain) {
     _authToken = token;
     _authDomain = domain;
+}
+function setApiUrl(url) {
+    _apiUrl = url;
+}
+function getAuthToken() {
+    return _authToken;
+}
+function getApiUrl() {
+    return _apiUrl;
+}
+function httpPost(url, data, authToken) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const isHttps = urlObj.protocol === 'https:';
+        const reqModule = isHttps ? https : http;
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (authToken) {
+            if (authToken.startsWith('RG-')) {
+                headers['x-api-key'] = authToken;
+            }
+            else {
+                headers['Authorization'] = `Bearer ${authToken}`;
+                headers['Cookie'] = `rg_access_token=${authToken}`;
+            }
+        }
+        const payload = JSON.stringify(data);
+        headers['Content-Length'] = String(Buffer.byteLength(payload));
+        const req = reqModule.request({
+            hostname: urlObj.hostname,
+            port: urlObj.port || (isHttps ? 443 : 80),
+            path: urlObj.pathname,
+            method: 'POST',
+            headers,
+        }, (res) => {
+            let body = '';
+            res.on('data', (c) => { body += c.toString(); });
+            res.on('end', () => {
+                if (res.statusCode && res.statusCode < 400) {
+                    resolve(body);
+                }
+                else {
+                    reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
+                }
+            });
+            res.on('error', reject);
+        });
+        req.on('error', reject);
+        req.write(payload);
+        req.end();
+    });
 }
 // Track active terminals for read_terminal
 const _terminals = new Map();
@@ -629,17 +684,48 @@ async function execReadTerminal(processId, name) {
     return JSON.stringify({ terminals: list });
 }
 // ── Interactive Terminal ──
+let embeddedTerminalInstance = null;
+function setEmbeddedTerminal(instance) {
+    embeddedTerminalInstance = instance;
+}
 async function execTerminalCreate(name, cwd, shell) {
+    // Use embedded terminal if available
+    if (embeddedTerminalInstance) {
+        // Create PTY session on backend
+        const apiUrl = getApiUrl();
+        const authToken = getAuthToken();
+        try {
+            const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-create`, {
+                cwd: cwd || vscode.workspace.rootPath,
+                shell: shell
+            }, authToken);
+            const result = JSON.parse(response);
+            const sessionId = result.session_id;
+            // Show embedded terminal webview
+            embeddedTerminalInstance.show(sessionId, name || 'Terminal');
+            return JSON.stringify({
+                session_id: sessionId,
+                name: name || 'Terminal',
+                cwd: cwd || vscode.workspace.rootPath,
+                shell: shell,
+                message: `Embedded terminal created. Terminal panel opened for live interaction.`,
+                embedded: true
+            });
+        }
+        catch (err) {
+            // Fallback to VS Code native terminal if backend fails
+            console.error('Embedded terminal creation failed, falling back to native:', err);
+        }
+    }
+    // Fallback to VS Code native terminal
     const session = interactiveTerminal.createSession(name, cwd, shell);
-    // Wait a moment for shell to initialize
-    await new Promise(r => setTimeout(r, 500));
     return JSON.stringify({
         session_id: session.id,
         name: session.name,
         cwd: session.cwd,
         shell: session.shell,
-        alive: session.isAlive,
         message: `Terminal "${session.name}" created. Use terminal_send to send commands, terminal_read to read output.`,
+        embedded: false
     });
 }
 async function execTerminalSend(sessionId, input) {

@@ -12,10 +12,11 @@ import { ResonantAuthService } from './authService';
 import { ResonantAuthenticationProvider } from './authProvider';
 import { ResonantLanguageModelProvider } from './languageModelProvider';
 import { ProfileWebviewProvider } from './profileWebview';
+import { EmbeddedTerminalView } from './embeddedTerminal';
 import { SettingsPanelProvider } from './settingsPanel';
 import { ResonantAgentProvider } from './agentProvider';
 import { ResonantChatViewProvider } from './chatViewProvider';
-import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary } from './toolExecutor';
+import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setEmbeddedTerminal, setApiUrl } from './toolExecutor';
 import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';
@@ -338,7 +339,7 @@ function processServerAgentLoop(
 				toolLabel = `SSH run · ${toolArgs.user ? toolArgs.user + '@' : ''}${toolArgs.host || ''}`;
 				if (toolArgs.command) { codePreview = `\n\`\`\`sh\n${trunc(toolArgs.command || '', 160)}\n\`\`\`\n`; }
 			} else if (toolName.startsWith('terminal_')) {
-				toolLabel = `Terminal: ${toolName.replace('terminal_', '')}`;
+				toolLabel = `💻 Terminal: ${toolName.replace('terminal_', '')}`;
 			} else if (toolName.startsWith('code_visualizer_')) {
 				toolLabel = `Code analysis: ${toolName.replace('code_visualizer_', '')}`;
 			} else {
@@ -466,6 +467,20 @@ function processServerAgentLoop(
 									chatResponse.progress(`Trying ${p.provider}/${p.model}...`);
 								} else {
 									chatResponse.progress(`Fallback #${attempt}: trying ${p.provider}/${p.model}...`);
+								}
+								break;
+							}
+
+							case 'todo_list': {
+								// Display todo list to user
+								const todos = p.todos || [];
+								if (todos.length > 0) {
+									chatResponse.markdown('\n### 📋 Action Plan\n');
+									todos.forEach((t: any) => {
+										const statusIcon = t.status === 'completed' ? '✅' : t.status === 'in_progress' ? '🔄' : '⬜';
+										chatResponse.markdown(`${statusIcon} ${t.content}\n`);
+									});
+									chatResponse.markdown('\n');
 								}
 								break;
 							}
@@ -793,13 +808,23 @@ export function activate(context: vscode.ExtensionContext) {
 				const promptLower = request.prompt.toLowerCase().trim();
 				const isContinue = /^(continu|resume|pick up|go on|keep going|do it|yes|proceed|carry on|go ahead)/i.test(promptLower) && promptLower.length < 80;
 				let checkpointContext = '';
-				if (isContinue && chatHistoryContext.length === 0) {
-					// No chat history but user wants to continue — load last checkpoint
+				
+				// Auto-load checkpoint if: (1) user says "continue" with no history, OR (2) new conversation with workspace match
+				if ((isContinue && chatHistoryContext.length === 0) || (chatHistoryContext.length === 0 && !isContinue)) {
+					// No chat history — try to load last checkpoint for context continuity
 					try {
 						const cpResult = await executeToolCall({ id: 'auto', type: 'function', function: { name: 'load_checkpoint', arguments: '{}' } }, workspaceRoot);
 						const cp = JSON.parse(cpResult);
 						if (cp.latest) {
-							checkpointContext = `\n\n[CHECKPOINT RESTORED — ${cp.latest.timestamp}]\nPrevious session summary: ${cp.latest.summary}\nKey files: ${(cp.latest.key_files || []).join(', ')}\nPending tasks: ${(cp.latest.pending_tasks || []).join(', ')}`;
+							// Check if checkpoint is recent (within 24 hours) and relevant
+							const cpTime = new Date(cp.latest.timestamp).getTime();
+						 const now = Date.now();
+						 const hoursSinceCheckpoint = (now - cpTime) / (1000 * 60 * 60);
+						 
+						 // Auto-load if recent (< 24 hours) OR user explicitly said "continue"
+						 if (hoursSinceCheckpoint < 24 || isContinue) {
+							 checkpointContext = `\n\n[CHECKPOINT RESTORED — ${cp.latest.timestamp}]\nPrevious session summary: ${cp.latest.summary}\nKey files: ${(cp.latest.key_files || []).join(', ')}\nPending tasks: ${(cp.latest.pending_tasks || []).join(', ')}`;
+							 }
 						}
 					} catch { /* no checkpoint available */ }
 				}
@@ -811,7 +836,7 @@ export function activate(context: vscode.ExtensionContext) {
 					workspace_root: workspaceRoot,
 					active_file: openFile,
 					model_id: `resonant-${providerKey}-${modelName}`,
-					context: chatHistoryContext.slice(-10),
+					context: chatHistoryContext.slice(-20),
 					max_loops: maxLoops,
 					tools: LOCAL_TOOL_DEFINITIONS,
 					ide_metadata: ideMetadata,
@@ -1016,6 +1041,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Profile / Account Settings webview
 	const profileProvider = new ProfileWebviewProvider(context, async () => authService.getToken());
+	const embeddedTerminalView = new EmbeddedTerminalView(context);
+	
+	// Set API URL and embedded terminal for toolExecutor
+	const config = vscode.workspace.getConfiguration('resonant');
+	setApiUrl(config.get<string>('apiUrl', 'https://dev-swat.com'));
+	setEmbeddedTerminal(embeddedTerminalView);
+	
 	context.subscriptions.push(
 		vscode.commands.registerCommand('resonant.openProfile', () => {
 			profileProvider.show();

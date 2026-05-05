@@ -49,6 +49,7 @@ const authService_1 = require("./authService");
 const authProvider_1 = require("./authProvider");
 const languageModelProvider_1 = require("./languageModelProvider");
 const profileWebview_1 = require("./profileWebview");
+const embeddedTerminal_1 = require("./embeddedTerminal");
 const settingsPanel_1 = require("./settingsPanel");
 const agentProvider_1 = require("./agentProvider");
 const chatViewProvider_1 = require("./chatViewProvider");
@@ -438,7 +439,7 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                 }
             }
             else if (toolName.startsWith('terminal_')) {
-                toolLabel = `Terminal: ${toolName.replace('terminal_', '')}`;
+                toolLabel = `💻 Terminal: ${toolName.replace('terminal_', '')}`;
             }
             else if (toolName.startsWith('code_visualizer_')) {
                 toolLabel = `Code analysis: ${toolName.replace('code_visualizer_', '')}`;
@@ -582,6 +583,19 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                 }
                                 else {
                                     chatResponse.progress(`Fallback #${attempt}: trying ${p.provider}/${p.model}...`);
+                                }
+                                break;
+                            }
+                            case 'todo_list': {
+                                // Display todo list to user
+                                const todos = p.todos || [];
+                                if (todos.length > 0) {
+                                    chatResponse.markdown('\n### 📋 Action Plan\n');
+                                    todos.forEach((t) => {
+                                        const statusIcon = t.status === 'completed' ? '✅' : t.status === 'in_progress' ? '🔄' : '⬜';
+                                        chatResponse.markdown(`${statusIcon} ${t.content}\n`);
+                                    });
+                                    chatResponse.markdown('\n');
                                 }
                                 break;
                             }
@@ -837,8 +851,8 @@ function activate(context) {
                 return tree;
             };
             workspaceLayout = await buildTree(vscode.workspace.workspaceFolders[0].uri, '- ', 0);
-            if (workspaceLayout.length > 4000) {
-                workspaceLayout = workspaceLayout.slice(0, 4000) + '\n... (truncated)';
+            if (workspaceLayout.length > 2000) {
+                workspaceLayout = workspaceLayout.slice(0, 2000) + '\n... (truncated)';
             }
         }
         catch { /* non-critical */ }
@@ -852,11 +866,6 @@ function activate(context) {
         try {
             // ═══════════════════════════════════════════════════════════
             // SERVER-SIDE AGENTIC LOOP — thin client (ALL providers)
-            // Server handles: LLM calls, tool selection, system prompt,
-            // message history, retry logic. Client only renders UI and
-            // executes tools locally when the server requests it.
-            // For local LLM (Ollama): server proxies LLM calls through
-            // the client's local endpoint.
             // ═══════════════════════════════════════════════════════════
             const chatHistoryContext = [];
             for (const turn of chatContext.history) {
@@ -877,11 +886,12 @@ function activate(context) {
                             .replace(/```[\s\S]*?```/g, '') // code blocks (tool previews)
                             .replace(/\n\n---\n\*🔧[\s\S]*?\*\n?/g, '\n')
                             .replace(/\n\*✏️ Session LOC:[^\n]*\n?/g, '\n')
+                            .replace(/\n\*⚡[^\n]*\n?/g, '\n')
                             .replace(/\n{3,}/g, '\n\n') // collapse multiple newlines
                             .trim();
                         // Truncate very long assistant responses to keep context manageable
-                        if (cleaned.length > 1500) {
-                            cleaned = cleaned.slice(0, 1500) + '\n... (truncated)';
+                        if (cleaned.length > 800) {
+                            cleaned = cleaned.slice(0, 800) + '\n... (truncated)';
                         }
                         if (cleaned) {
                             chatHistoryContext.push({ role: 'assistant', content: cleaned });
@@ -889,13 +899,43 @@ function activate(context) {
                     }
                 }
             }
-            // Build request body — include local LLM info if user selected Ollama
+            // ── Memory retrieval: inject relevant memories into the prompt ──
+            let memoryContext = '';
+            try {
+                memoryContext = await (0, toolExecutor_1.retrieveRelevantMemories)(request.prompt);
+            }
+            catch { /* non-critical */ }
+            // ── Continue/resume detection: inject last checkpoint if user says "continue" ──
+            const promptLower = request.prompt.toLowerCase().trim();
+            const isContinue = /^(continu|resume|pick up|go on|keep going|do it|yes|proceed|carry on|go ahead)/i.test(promptLower) && promptLower.length < 80;
+            let checkpointContext = '';
+            // Auto-load checkpoint if: (1) user says "continue" with no history, OR (2) new conversation with workspace match
+            if ((isContinue && chatHistoryContext.length === 0) || (chatHistoryContext.length === 0 && !isContinue)) {
+                // No chat history — try to load last checkpoint for context continuity
+                try {
+                    const cpResult = await (0, toolExecutor_1.executeToolCall)({ id: 'auto', type: 'function', function: { name: 'load_checkpoint', arguments: '{}' } }, workspaceRoot);
+                    const cp = JSON.parse(cpResult);
+                    if (cp.latest) {
+                        // Check if checkpoint is recent (within 24 hours) and relevant
+                        const cpTime = new Date(cp.latest.timestamp).getTime();
+                        const now = Date.now();
+                        const hoursSinceCheckpoint = (now - cpTime) / (1000 * 60 * 60);
+                        // Auto-load if recent (< 24 hours) OR user explicitly said "continue"
+                        if (hoursSinceCheckpoint < 24 || isContinue) {
+                            checkpointContext = `\n\n[CHECKPOINT RESTORED — ${cp.latest.timestamp}]\nPrevious session summary: ${cp.latest.summary}\nKey files: ${(cp.latest.key_files || []).join(', ')}\nPending tasks: ${(cp.latest.pending_tasks || []).join(', ')}`;
+                        }
+                    }
+                }
+                catch { /* no checkpoint available */ }
+            }
+            // Build request body
+            const enrichedPrompt = request.prompt + memoryContext + checkpointContext;
             const requestBody = {
-                prompt: request.prompt,
+                prompt: enrichedPrompt,
                 workspace_root: workspaceRoot,
                 active_file: openFile,
                 model_id: `resonant-${providerKey}-${modelName}`,
-                context: chatHistoryContext.slice(-10),
+                context: chatHistoryContext.slice(-20),
                 max_loops: maxLoops,
                 tools: toolDefinitions_1.LOCAL_TOOL_DEFINITIONS,
                 ide_metadata: ideMetadata,
@@ -948,6 +988,15 @@ function activate(context) {
             const locDelta = (0, locTracker_1.getSessionDelta)(locStart);
             if (locDelta.calls > 0) {
                 response.markdown(`\n*✏️ Session LOC: ${locDelta.written} written, ${locDelta.edited} edited, ${locDelta.net} net*\n`);
+            }
+            // Auto-save checkpoint after each substantive turn for session continuity
+            if (totalToolCalls > 0) {
+                try {
+                    const lastAssistantText = chatHistoryContext.filter(m => m.role === 'assistant').pop()?.content || '';
+                    const summary = `User asked: "${request.prompt.slice(0, 200)}". ${loops} loops, ${totalToolCalls} tool calls. ${lastAssistantText.slice(0, 300)}`;
+                    await (0, toolExecutor_1.executeToolCall)({ id: 'auto', type: 'function', function: { name: 'save_checkpoint', arguments: JSON.stringify({ summary, pending_tasks: [] }) } }, workspaceRoot);
+                }
+                catch { /* non-critical */ }
             }
             // Flush LOC events after each conversation turn
             (0, locTracker_1.flushEvents)();
@@ -1055,6 +1104,11 @@ function activate(context) {
     }));
     // Profile / Account Settings webview
     const profileProvider = new profileWebview_1.ProfileWebviewProvider(context, async () => authService.getToken());
+    const embeddedTerminalView = new embeddedTerminal_1.EmbeddedTerminalView(context);
+    // Set API URL and embedded terminal for toolExecutor
+    const config = vscode.workspace.getConfiguration('resonant');
+    (0, toolExecutor_1.setApiUrl)(config.get('apiUrl', 'https://dev-swat.com'));
+    (0, toolExecutor_1.setEmbeddedTerminal)(embeddedTerminalView);
     context.subscriptions.push(vscode.commands.registerCommand('resonant.openProfile', () => {
         profileProvider.show();
     }));
