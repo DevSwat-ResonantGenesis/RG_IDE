@@ -49,6 +49,7 @@ const authService_1 = require("./authService");
 const authProvider_1 = require("./authProvider");
 const languageModelProvider_1 = require("./languageModelProvider");
 const profileWebview_1 = require("./profileWebview");
+const embeddedTerminal_1 = require("./embeddedTerminal");
 const settingsPanel_1 = require("./settingsPanel");
 const agentProvider_1 = require("./agentProvider");
 const chatViewProvider_1 = require("./chatViewProvider");
@@ -1103,9 +1104,11 @@ function activate(context) {
     }));
     // Profile / Account Settings webview
     const profileProvider = new profileWebview_1.ProfileWebviewProvider(context, async () => authService.getToken());
-    // Set API URL for toolExecutor (embedded terminal)
+    const embeddedTerminalView = new embeddedTerminal_1.EmbeddedTerminalView(context);
+    // Set API URL and embedded terminal for toolExecutor
     const config = vscode.workspace.getConfiguration('resonant');
     (0, toolExecutor_1.setApiUrl)(config.get('apiUrl', 'https://dev-swat.com'));
+    (0, toolExecutor_1.setEmbeddedTerminal)(embeddedTerminalView);
     context.subscriptions.push(vscode.commands.registerCommand('resonant.openProfile', () => {
         profileProvider.show();
     }));

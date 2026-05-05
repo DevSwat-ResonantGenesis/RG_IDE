@@ -12,10 +12,11 @@ import { ResonantAuthService } from './authService';
 import { ResonantAuthenticationProvider } from './authProvider';
 import { ResonantLanguageModelProvider } from './languageModelProvider';
 import { ProfileWebviewProvider } from './profileWebview';
+import { EmbeddedTerminalView } from './embeddedTerminal';
 import { SettingsPanelProvider } from './settingsPanel';
 import { ResonantAgentProvider } from './agentProvider';
 import { ResonantChatViewProvider } from './chatViewProvider';
-import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl } from './toolExecutor';
+import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setEmbeddedTerminal, setApiUrl } from './toolExecutor';
 import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';
@@ -1040,10 +1041,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Profile / Account Settings webview
 	const profileProvider = new ProfileWebviewProvider(context, async () => authService.getToken());
+	const embeddedTerminalView = new EmbeddedTerminalView(context);
 	
-	// Set API URL for toolExecutor (embedded terminal)
+	// Set API URL and embedded terminal for toolExecutor
 	const config = vscode.workspace.getConfiguration('resonant');
 	setApiUrl(config.get<string>('apiUrl', 'https://dev-swat.com'));
+	setEmbeddedTerminal(embeddedTerminalView);
 	
 	context.subscriptions.push(
 		vscode.commands.registerCommand('resonant.openProfile', () => {

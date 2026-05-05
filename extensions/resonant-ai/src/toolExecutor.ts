@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as https from 'https';
 import * as http from 'http';
 import * as interactiveTerminal from './interactiveTerminal';
+import { EmbeddedTerminalView } from './embeddedTerminal';
 
 /**
  * Tool Executor — uses VS Code APIs + Node.js for local tool execution.
@@ -666,41 +667,55 @@ async function execReadTerminal(processId?: string, name?: string): Promise<stri
 }
 
 // ── Interactive Terminal ──
+let embeddedTerminalInstance: EmbeddedTerminalView | null = null;
+
+export function setEmbeddedTerminal(instance: EmbeddedTerminalView) {
+  embeddedTerminalInstance = instance;
+}
+
 async function execTerminalCreate(name?: string, cwd?: string, shell?: string): Promise<string> {
-  // Create PTY session on backend
-  const apiUrl = getApiUrl();
-  const authToken = getAuthToken();
-  
-  try {
-    const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-create`, {
-      cwd: cwd || vscode.workspace.rootPath,
-      shell: shell
-    }, authToken);
+  // Use embedded terminal if available
+  if (embeddedTerminalInstance) {
+    // Create PTY session on backend
+    const apiUrl = getApiUrl();
+    const authToken = getAuthToken();
     
-    const result = JSON.parse(response);
-    const sessionId = result.session_id;
-    
-    return JSON.stringify({
-      session_id: sessionId,
-      name: name || 'Terminal',
-      cwd: cwd || vscode.workspace.rootPath,
-      shell: shell,
-      message: `Terminal created in chat with session ID: ${sessionId}`,
-      embedded: true
-    });
-  } catch (err) {
-    // Fallback to VS Code native terminal if backend fails
-    console.error('Embedded terminal creation failed, falling back to native:', err);
-    const session = interactiveTerminal.createSession(name, cwd, shell);
-    return JSON.stringify({
-      session_id: session.id,
-      name: session.name,
-      cwd: session.cwd,
-      shell: session.shell,
-      message: `Terminal "${session.name}" created. Use terminal_send to send commands, terminal_read to read output.`,
-      embedded: false
-    });
+    try {
+      const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-create`, {
+        cwd: cwd || vscode.workspace.rootPath,
+        shell: shell
+      }, authToken);
+      
+      const result = JSON.parse(response);
+      const sessionId = result.session_id;
+      
+      // Show embedded terminal webview
+      embeddedTerminalInstance.show(sessionId, name || 'Terminal');
+      
+      return JSON.stringify({
+        session_id: sessionId,
+        name: name || 'Terminal',
+        cwd: cwd || vscode.workspace.rootPath,
+        shell: shell,
+        message: `Embedded terminal created. Terminal panel opened for live interaction.`,
+        embedded: true
+      });
+    } catch (err) {
+      // Fallback to VS Code native terminal if backend fails
+      console.error('Embedded terminal creation failed, falling back to native:', err);
+    }
   }
+  
+  // Fallback to VS Code native terminal
+  const session = interactiveTerminal.createSession(name, cwd, shell);
+  return JSON.stringify({
+    session_id: session.id,
+    name: session.name,
+    cwd: session.cwd,
+    shell: session.shell,
+    message: `Terminal "${session.name}" created. Use terminal_send to send commands, terminal_read to read output.`,
+    embedded: false
+  });
 }
 
 async function execTerminalSend(sessionId: string, input: string): Promise<string> {
