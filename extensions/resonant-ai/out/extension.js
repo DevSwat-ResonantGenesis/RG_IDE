@@ -504,8 +504,8 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                 chatResponse.markdown('\n### 🖥️ Terminal-Only Mode Active\nAgent is now communicating via terminal only. Type `exit` in terminal to return to chat mode.\n');
                                 // Set terminal-only mode state
                                 (0, toolExecutor_1.setTerminalOnlyMode)(sessionId);
-                                // Update embedded terminal to terminal-only mode
-                                embeddedTerminalView?.setTerminalOnlyMode(true);
+                                // Update embedded terminal to terminal-only mode with agent session ID
+                                embeddedTerminalView?.setTerminalOnlyMode(true, sessionId);
                                 break;
                             }
                             case 'execute_tool': {

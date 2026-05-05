@@ -19,6 +19,7 @@ export class EmbeddedTerminalView {
 	private sessionId: string = '';
 	private apiUrl: string = 'https://dev-swat.com';
 	private terminalOnlyMode: boolean = false;
+	private agentSessionId: string = '';
 
 	constructor(private context: vscode.ExtensionContext) {
 		const config = vscode.workspace.getConfiguration('resonant');
@@ -161,12 +162,14 @@ export class EmbeddedTerminalView {
 
         const vscode = acquireVsCodeApi();
         let terminalOnlyMode = false;
+        let agentSessionId = '';
 
         // Handle messages from extension
         window.addEventListener('message', (event) => {
             const message = event.data;
             if (message.type === 'terminal_only_mode') {
                 terminalOnlyMode = message.enabled;
+                agentSessionId = message.agentSessionId || '';
                 if (terminalOnlyMode) {
                     terminal.write('\\r\\n\\x1b[33m=== Terminal-Only Mode Active ===\\x1b[0m\\r\\n');
                 }
@@ -183,15 +186,13 @@ export class EmbeddedTerminalView {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        session_id: sessionId,
+                        session_id: agentSessionId,
                         input: data
                     })
                 })
                 .then(response => response.json())
                 .then(result => {
-                    if (result.response) {
-                        terminal.write(result.response);
-                    }
+                    // Input sent successfully
                 })
                 .catch(error => {
                     terminal.write('\\r\\n\\x1b[31mError: ' + error.message + '\\x1b[0m\\r\\n');
@@ -210,11 +211,12 @@ export class EmbeddedTerminalView {
 </html>`;
 	}
 
-	setTerminalOnlyMode(enabled: boolean) {
+	setTerminalOnlyMode(enabled: boolean, agentSessionId: string = '') {
 		this.terminalOnlyMode = enabled;
+		this.agentSessionId = agentSessionId;
 		// Update webview to handle terminal-only mode
 		if (this.panel) {
-			this.panel.webview.postMessage({ type: 'terminal_only_mode', enabled });
+			this.panel.webview.postMessage({ type: 'terminal_only_mode', enabled, agentSessionId });
 		}
 	}
 
