@@ -18,6 +18,7 @@ export class EmbeddedTerminalView {
 	private disposables: vscode.Disposable[] = [];
 	private sessionId: string = '';
 	private apiUrl: string = 'https://dev-swat.com';
+	private terminalOnlyMode: boolean = false;
 
 	constructor(private context: vscode.ExtensionContext) {
 		const config = vscode.workspace.getConfiguration('resonant');
@@ -158,9 +159,47 @@ export class EmbeddedTerminalView {
             terminal.write('\\r\\n\\x1b[33mConnection closed\\x1b[0m\\r\\n');
         };
 
+        const vscode = acquireVsCodeApi();
+        let terminalOnlyMode = false;
+
+        // Handle messages from extension
+        window.addEventListener('message', (event) => {
+            const message = event.data;
+            if (message.type === 'terminal_only_mode') {
+                terminalOnlyMode = message.enabled;
+                if (terminalOnlyMode) {
+                    terminal.write('\\r\\n\\x1b[33m=== Terminal-Only Mode Active ===\\x1b[0m\\r\\n');
+                }
+            }
+        });
+
         // Send user input to backend
         terminal.onData((data) => {
-            ws.send(JSON.stringify({ type: 'input', content: data }));
+            if (terminalOnlyMode) {
+                // In terminal-only mode, send to /terminal-input endpoint
+                fetch('${this.apiUrl}/api/v1/ide/terminal-input', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        input: data
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.response) {
+                        terminal.write(result.response);
+                    }
+                })
+                .catch(error => {
+                    terminal.write('\\r\\n\\x1b[31mError: ' + error.message + '\\x1b[0m\\r\\n');
+                });
+            } else {
+                // Normal mode: send to PTY via WebSocket
+                ws.send(JSON.stringify({ type: 'input', content: data }));
+            }
         });
 
         // Notify extension when terminal is ready
@@ -169,6 +208,14 @@ export class EmbeddedTerminalView {
     </script>
 </body>
 </html>`;
+	}
+
+	setTerminalOnlyMode(enabled: boolean) {
+		this.terminalOnlyMode = enabled;
+		// Update webview to handle terminal-only mode
+		if (this.panel) {
+			this.panel.webview.postMessage({ type: 'terminal_only_mode', enabled });
+		}
 	}
 
 	sendInput(input: string) {

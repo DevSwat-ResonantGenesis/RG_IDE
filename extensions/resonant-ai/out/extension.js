@@ -504,7 +504,8 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                 chatResponse.markdown('\n### 🖥️ Terminal-Only Mode Active\nAgent is now communicating via terminal only. Type `exit` in terminal to return to chat mode.\n');
                                 // Set terminal-only mode state
                                 (0, toolExecutor_1.setTerminalOnlyMode)(sessionId);
-                                // Client should now post terminal input to /terminal-input endpoint
+                                // Update embedded terminal to terminal-only mode
+                                embeddedTerminalView?.setTerminalOnlyMode(true);
                                 break;
                             }
                             case 'execute_tool': {
@@ -736,7 +737,8 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
     });
 }
 let authService;
-function activate(context) {
+let embeddedTerminalView;
+async function activate(context) {
     console.log('[DevSwat AI] Extension activating...');
     // Register VS Code authentication provider (powers the Sign In button)
     const authProvider = new authProvider_1.ResonantAuthenticationProvider(context);
@@ -1114,7 +1116,7 @@ function activate(context) {
     }));
     // Profile / Account Settings webview
     const profileProvider = new profileWebview_1.ProfileWebviewProvider(context, async () => authService.getToken());
-    const embeddedTerminalView = new embeddedTerminal_1.EmbeddedTerminalView(context);
+    embeddedTerminalView = new embeddedTerminal_1.EmbeddedTerminalView(context);
     // Set API URL and embedded terminal for toolExecutor
     const config = vscode.workspace.getConfiguration('resonant');
     (0, toolExecutor_1.setApiUrl)(config.get('apiUrl', 'https://dev-swat.com'));

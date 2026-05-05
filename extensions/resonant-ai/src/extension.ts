@@ -16,7 +16,7 @@ import { EmbeddedTerminalView } from './embeddedTerminal';
 import { SettingsPanelProvider } from './settingsPanel';
 import { ResonantAgentProvider } from './agentProvider';
 import { ResonantChatViewProvider } from './chatViewProvider';
-import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl, setEmbeddedTerminal, setTerminalOnlyMode, clearTerminalOnlyMode } from './toolExecutor';
+import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl, setEmbeddedTerminal, setTerminalOnlyMode, clearTerminalOnlyMode, isTerminalOnlyMode, postTerminalInput } from './toolExecutor';
 import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';
@@ -396,7 +396,8 @@ function processServerAgentLoop(
 								chatResponse.markdown('\n### 🖥️ Terminal-Only Mode Active\nAgent is now communicating via terminal only. Type `exit` in terminal to return to chat mode.\n');
 								// Set terminal-only mode state
 								setTerminalOnlyMode(sessionId);
-								// Client should now post terminal input to /terminal-input endpoint
+								// Update embedded terminal to terminal-only mode
+								embeddedTerminalView?.setTerminalOnlyMode(true);
 								break;
 							}
 
@@ -624,7 +625,9 @@ function processServerAgentLoop(
 
 let authService: ResonantAuthService;
 
-export function activate(context: vscode.ExtensionContext) {
+let embeddedTerminalView: EmbeddedTerminalView | undefined;
+
+export async function activate(context: vscode.ExtensionContext) {
 	console.log('[DevSwat AI] Extension activating...');
 
 	// Register VS Code authentication provider (powers the Sign In button)
@@ -1052,7 +1055,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Profile / Account Settings webview
 	const profileProvider = new ProfileWebviewProvider(context, async () => authService.getToken());
-	const embeddedTerminalView = new EmbeddedTerminalView(context);
+	embeddedTerminalView = new EmbeddedTerminalView(context);
 	
 	// Set API URL and embedded terminal for toolExecutor
 	const config = vscode.workspace.getConfiguration('resonant');
