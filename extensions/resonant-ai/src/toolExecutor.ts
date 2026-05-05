@@ -29,9 +29,70 @@ export function setAskUserCallback(cb: (question: string, options?: AskUserOptio
 // Auth info for server-backed memory
 let _authToken: string | null = null;
 let _authDomain: string | null = null;
+let _apiUrl: string = 'https://dev-swat.com';
+
 export function setAuthInfo(token: string | null, domain: string | null) {
   _authToken = token;
   _authDomain = domain;
+}
+
+export function setApiUrl(url: string) {
+  _apiUrl = url;
+}
+
+function getAuthToken(): string | null {
+  return _authToken;
+}
+
+function getApiUrl(): string {
+  return _apiUrl;
+}
+
+function httpPost(url: string, data: any, authToken: string | null): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const isHttps = urlObj.protocol === 'https:';
+    const reqModule = isHttps ? https : http;
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (authToken) {
+      if (authToken.startsWith('RG-')) {
+        headers['x-api-key'] = authToken;
+      } else {
+        headers['Authorization'] = `Bearer ${authToken}`;
+        headers['Cookie'] = `rg_access_token=${authToken}`;
+      }
+    }
+    
+    const payload = JSON.stringify(data);
+    headers['Content-Length'] = String(Buffer.byteLength(payload));
+    
+    const req = reqModule.request({
+      hostname: urlObj.hostname,
+      port: urlObj.port || (isHttps ? 443 : 80),
+      path: urlObj.pathname,
+      method: 'POST',
+      headers,
+    }, (res) => {
+      let body = '';
+      res.on('data', (c: Buffer) => { body += c.toString(); });
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode < 400) {
+          resolve(body);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
+        }
+      });
+      res.on('error', reject);
+    });
+    
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
 }
 
 // Track active terminals for read_terminal
@@ -606,14 +667,40 @@ async function execReadTerminal(processId?: string, name?: string): Promise<stri
 
 // ── Interactive Terminal ──
 async function execTerminalCreate(name?: string, cwd?: string, shell?: string): Promise<string> {
-  const session = interactiveTerminal.createSession(name, cwd, shell);
-  return JSON.stringify({
-    session_id: session.id,
-    name: session.name,
-    cwd: session.cwd,
-    shell: session.shell,
-    message: `Terminal "${session.name}" created. Use terminal_send to send commands, terminal_read to read output.`,
-  });
+  // Create PTY session on backend
+  const apiUrl = getApiUrl();
+  const authToken = getAuthToken();
+  
+  try {
+    const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-create`, {
+      cwd: cwd || vscode.workspace.rootPath,
+      shell: shell
+    }, authToken);
+    
+    const result = JSON.parse(response);
+    const sessionId = result.session_id;
+    
+    return JSON.stringify({
+      session_id: sessionId,
+      name: name || 'Terminal',
+      cwd: cwd || vscode.workspace.rootPath,
+      shell: shell,
+      message: `Terminal created in chat with session ID: ${sessionId}`,
+      embedded: true
+    });
+  } catch (err) {
+    // Fallback to VS Code native terminal if backend fails
+    console.error('Embedded terminal creation failed, falling back to native:', err);
+    const session = interactiveTerminal.createSession(name, cwd, shell);
+    return JSON.stringify({
+      session_id: session.id,
+      name: session.name,
+      cwd: session.cwd,
+      shell: session.shell,
+      message: `Terminal "${session.name}" created. Use terminal_send to send commands, terminal_read to read output.`,
+      embedded: false
+    });
+  }
 }
 
 async function execTerminalSend(sessionId: string, input: string): Promise<string> {

@@ -396,6 +396,60 @@ flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; 
 .tool-block.terminal .exit-ok { color: #81c784; }
 .tool-block.terminal .exit-fail { color: #ef5350; }
 
+/* Embedded terminal in chat */
+.embedded-terminal {
+  border-radius: 6px;
+  border: 1px solid var(--vscode-panel-border);
+  margin: 8px 0;
+  overflow: hidden;
+}
+.embedded-terminal .terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(79,195,247,0.1);
+  color: #4fc3f7;
+  font-size: 11px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.embedded-terminal .terminal-container {
+  background: #1e1e1e;
+  padding: 8px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow: auto;
+}
+.embedded-terminal .terminal-input {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--vscode-editor-background);
+  border-top: 1px solid var(--vscode-panel-border);
+}
+.embedded-terminal .terminal-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-editor-font-family, 'Menlo', monospace);
+  font-size: 12px;
+  outline: none;
+}
+.embedded-terminal .terminal-input button {
+  background: var(--vscode-button-background);
+  border: none;
+  color: var(--vscode-button-foreground);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.embedded-terminal .terminal-input button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
 /* File operation blocks */
 .tool-block.file { border-color: rgba(255,183,77,0.3); }
 .tool-block.file .tool-header { background: rgba(255,183,77,0.08); color: #ffb74d; }
@@ -456,6 +510,9 @@ cursor: pointer; font-size: 13px; font-weight: 600;
 #inputArea button:disabled { opacity: 0.5; cursor: not-allowed; }
 .hidden { display: none !important; }
 </style>
+<!-- xterm.js for embedded terminal -->
+<script src="${this._context.extensionUri + '/node_modules/xterm/lib/xterm.js'}"></script>
+<link rel="stylesheet" href="${this._context.extensionUri + '/node_modules/xterm/css/xterm.css'}" />
 </head>
 <body>
 <div id="header">
@@ -582,12 +639,12 @@ function getToolIcon(name) {
 function getToolLabel(name, args) {
   switch (name) {
     case 'run_command': return 'Command' + (args.cwd ? ' in ~/' + args.cwd.split('/').slice(-2).join('/') : '');
-    case 'terminal_create': return 'Terminal: ' + (args.name || 'New Session');
-    case 'terminal_send': return 'Terminal \u2192 ' + truncate(args.input, 40);
-    case 'terminal_read': return 'Terminal \u2190 Read output';
-    case 'terminal_wait': return 'Terminal \u23F3 Waiting...';
-    case 'terminal_list': return 'Terminal: List sessions';
-    case 'terminal_close': return 'Terminal: Close';
+    case 'terminal_create': return '💻 Terminal: ' + (args.name || 'New Session') + ' (VS Code Panel)';
+    case 'terminal_send': return '💻 Terminal \u2192 ' + truncate(args.input, 40);
+    case 'terminal_read': return '💻 Terminal \u2190 Read output';
+    case 'terminal_wait': return '💻 Terminal \u23F3 Waiting...';
+    case 'terminal_list': return '💻 Terminal: List sessions';
+    case 'terminal_close': return '💻 Terminal: Close';
     case 'file_read': return 'Read ' + shortPath(args.path);
     case 'file_write': return 'Write ' + shortPath(args.path);
     case 'file_edit': return 'Edit ' + shortPath(args.path);
@@ -632,6 +689,21 @@ function renderToolCall(data) {
     bodyContent += '<span class="cmd-line">\u276F ' + escHtml(cmd) + '</span>';
     bodyContent += '\\n<span class="cmd-output" id="output-' + (data.id||'') + '">Running...</span>';
     bodyContent += '</pre>';
+  } else if (data.tool === 'terminal_create') {
+    // Render embedded terminal in chat
+    const sessionId = args.session_id || 'unknown';
+    const termId = 'term-' + sessionId;
+    bodyContent = '<div class="embedded-terminal" id="' + termId + '">';
+    bodyContent += '<div class="terminal-header">';
+    bodyContent += '<span>💻 ' + escHtml(args.name || 'Terminal') + '</span>';
+    bodyContent += '<span style="opacity: 0.7; font-size: 10px;">' + escHtml(args.cwd || '') + '</span>';
+    bodyContent += '</div>';
+    bodyContent += '<div class="terminal-container" id="term-container-' + sessionId + '"></div>';
+    bodyContent += '<div class="terminal-input">';
+    bodyContent += '<input type="text" id="term-input-' + sessionId + '" placeholder="Type command..." />';
+    bodyContent += '<button onclick="sendTerminalInput(\'' + sessionId + '\')">Send</button>';
+    bodyContent += '</div>';
+    bodyContent += '</div>';
   } else if (data.tool === 'file_edit' || data.tool === 'multi_edit') {
     bodyContent = '<pre>';
     if (args.explanation) bodyContent += escHtml(args.explanation) + '\\n\\n';
@@ -683,6 +755,13 @@ function renderToolCall(data) {
   messagesEl.appendChild(block);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   _pendingToolBlocks[data.id] = block;
+  
+  // Initialize embedded terminal if this is terminal_create
+  if (data.tool === 'terminal_create' && args.session_id) {
+    setTimeout(function() {
+      initEmbeddedTerminal(args.session_id, args.name, args.cwd);
+    }, 100);
+  }
 }
 
 function toggleToolBody(header) {
@@ -696,6 +775,95 @@ function toggleToolBody(header) {
     chevron.classList.add('open');
   }
 }
+
+// ── Embedded terminal management ──
+const _terminals = {};
+
+function initEmbeddedTerminal(sessionId, name, cwd) {
+  const containerId = 'term-container-' + sessionId;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  // Initialize xterm.js
+  const terminal = new Terminal({
+    cursorBlink: true,
+    fontSize: 14,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    theme: {
+      background: '#1e1e1e',
+      foreground: '#d4d4d4',
+      cursor: '#ffffff',
+      black: '#000000',
+      red: '#cd3131',
+      green: '#00bc00',
+      yellow: '#949800',
+      blue: '#0451a5',
+      magenta: '#bc05bc',
+      cyan: '#0598bc',
+      white: '#d4d4d4',
+      brightBlack: '#666666',
+      brightRed: '#cd3131',
+      brightGreen: '#14ce14',
+      brightYellow: '#b5ba00',
+      brightBlue: '#0451a5',
+      brightMagenta: '#bc05bc',
+      brightCyan: '#0598bc',
+      brightWhite: '#ffffff'
+    }
+  });
+  
+  terminal.open(container);
+  _terminals[sessionId] = terminal;
+  
+  // Connect to backend WebSocket for streaming
+  const apiUrl = vscode.workspace.getConfiguration('resonant').get('apiUrl', 'https://dev-swat.com');
+  const wsUrl = apiUrl.replace('https://', 'wss://').replace('http://', 'ws://') + '/api/v1/ide/terminal-stream/' + sessionId;
+  
+  const ws = new WebSocket(wsUrl);
+  
+  ws.onopen = function() {
+    terminal.write('\\r\\n\\x1b[32mConnected to terminal\\x1b[0m\\r\\n');
+  };
+  
+  ws.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    if (data.type === 'output') {
+      terminal.write(data.content);
+    } else if (data.type === 'error') {
+      terminal.write('\\r\\n\\x1b[31mError: ' + data.message + '\\x1b[0m\\r\\n');
+    }
+  };
+  
+  ws.onerror = function(error) {
+    terminal.write('\\r\\n\\x1b[31mConnection error\\x1b[0m\\r\\n');
+  };
+  
+  ws.onclose = function() {
+    terminal.write('\\r\\n\\x1b[33mConnection closed\\x1b[0m\\r\\n');
+  };
+  
+  // Send input to backend
+  _terminals[sessionId].onData = function(data) {
+    ws.send(JSON.stringify({ type: 'input', content: data }));
+  };
+  
+  // Store WebSocket for cleanup
+  _terminals[sessionId].ws = ws;
+}
+
+// Global function for sending terminal input from the input field
+window.sendTerminalInput = function(sessionId) {
+  const inputEl = document.getElementById('term-input-' + sessionId);
+  if (!inputEl) return;
+  
+  const input = inputEl.value + '\r';
+  inputEl.value = '';
+  
+  const terminal = _terminals[sessionId];
+  if (terminal && terminal.ws) {
+    terminal.ws.send(JSON.stringify({ type: 'input', content: input }));
+  }
+};
 
 // ── Update tool result into existing block ──
 function updateToolResult(data) {

@@ -15,7 +15,7 @@ import { ProfileWebviewProvider } from './profileWebview';
 import { SettingsPanelProvider } from './settingsPanel';
 import { ResonantAgentProvider } from './agentProvider';
 import { ResonantChatViewProvider } from './chatViewProvider';
-import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary } from './toolExecutor';
+import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl } from './toolExecutor';
 import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';
@@ -1040,6 +1040,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Profile / Account Settings webview
 	const profileProvider = new ProfileWebviewProvider(context, async () => authService.getToken());
+	
+	// Set API URL for toolExecutor (embedded terminal)
+	const config = vscode.workspace.getConfiguration('resonant');
+	setApiUrl(config.get<string>('apiUrl', 'https://dev-swat.com'));
+	
 	context.subscriptions.push(
 		vscode.commands.registerCommand('resonant.openProfile', () => {
 			profileProvider.show();
