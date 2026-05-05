@@ -9,14 +9,24 @@
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
+import { URL } from 'url';
 
 export class EmbeddedTerminalView {
 	private panel: vscode.WebviewPanel | undefined;
 	private disposables: vscode.Disposable[] = [];
+	private sessionId: string = '';
+	private apiUrl: string = 'https://dev-swat.com';
 
-	constructor(private context: vscode.ExtensionContext) {}
+	constructor(private context: vscode.ExtensionContext) {
+		const config = vscode.workspace.getConfiguration('resonant');
+		this.apiUrl = config.get<string>('apiUrl', 'https://dev-swat.com');
+	}
 
 	show(sessionId: string, title: string = 'Terminal') {
+		this.sessionId = sessionId;
+		
 		if (this.panel) {
 			this.panel.reveal();
 			return;
@@ -39,6 +49,14 @@ export class EmbeddedTerminalView {
 
 		this.panel.webview.html = this.getWebviewContent(sessionId);
 		this.panel.onDidDispose(() => this.dispose());
+		
+		// Handle messages from webview
+		this.panel.webview.onDidReceiveMessage(message => {
+			if (message.type === 'input') {
+				// Send input to backend via HTTP endpoint
+				this.sendToBackend(sessionId, message.content);
+			}
+		});
 	}
 
 	private getWebviewContent(sessionId: string): string {
@@ -155,6 +173,39 @@ export class EmbeddedTerminalView {
 
 	sendInput(input: string) {
 		this.panel?.webview.postMessage({ type: 'input', content: input });
+	}
+
+	private async sendToBackend(sessionId: string, input: string): Promise<void> {
+		const url = `${this.apiUrl}/api/v1/ide/terminal-send`;
+		const urlObj = new URL(url);
+		const isHttps = urlObj.protocol === 'https:';
+		const reqModule = isHttps ? https : http;
+		
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		};
+		
+		const payload = JSON.stringify({ session_id: sessionId, input: input });
+		headers['Content-Length'] = String(Buffer.byteLength(payload));
+		
+		const req = reqModule.request({
+			hostname: urlObj.hostname,
+			port: urlObj.port || (isHttps ? 443 : 80),
+			path: urlObj.pathname,
+			method: 'POST',
+			headers,
+		}, (res) => {
+			if (res.statusCode && res.statusCode >= 400) {
+				console.error(`PTY send failed: HTTP ${res.statusCode}`);
+			}
+		});
+		
+		req.on('error', (err) => {
+			console.error('PTY send error:', err);
+		});
+		
+		req.write(payload);
+		req.end();
 	}
 
 	dispose() {

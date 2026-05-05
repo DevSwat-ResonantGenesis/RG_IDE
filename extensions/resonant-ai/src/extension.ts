@@ -16,7 +16,7 @@ import { EmbeddedTerminalView } from './embeddedTerminal';
 import { SettingsPanelProvider } from './settingsPanel';
 import { ResonantAgentProvider } from './agentProvider';
 import { ResonantChatViewProvider } from './chatViewProvider';
-import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setEmbeddedTerminal, setApiUrl } from './toolExecutor';
+import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl, setEmbeddedTerminal } from './toolExecutor';
 import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';

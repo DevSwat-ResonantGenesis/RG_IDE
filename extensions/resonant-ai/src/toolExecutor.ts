@@ -719,6 +719,30 @@ async function execTerminalCreate(name?: string, cwd?: string, shell?: string): 
 }
 
 async function execTerminalSend(sessionId: string, input: string): Promise<string> {
+  // Try to send to PTY backend first (for embedded terminals)
+  const apiUrl = getApiUrl();
+  const authToken = getAuthToken();
+  
+  try {
+    const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-send`, {
+      session_id: sessionId,
+      input: input
+    }, authToken);
+    const result = JSON.parse(response);
+    if (result.success) {
+      // Wait briefly for output to appear
+      await new Promise(r => setTimeout(r, 500));
+      return JSON.stringify({
+        success: true,
+        sent: input,
+        message: 'Command sent to embedded terminal'
+      });
+    }
+  } catch (err) {
+    console.log('PTY send failed, falling back to native terminal:', err);
+  }
+  
+  // Fallback to VS Code native terminal
   const result = interactiveTerminal.sendInput(sessionId, input);
   if (!result.success) {
     return JSON.stringify({ error: result.error });
