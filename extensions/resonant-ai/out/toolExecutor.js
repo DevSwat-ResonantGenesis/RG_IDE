@@ -40,6 +40,10 @@ exports.registerTerminal = registerTerminal;
 exports.appendTerminalOutput = appendTerminalOutput;
 exports.executeToolCall = executeToolCall;
 exports.setEmbeddedTerminal = setEmbeddedTerminal;
+exports.setTerminalOnlyMode = setTerminalOnlyMode;
+exports.clearTerminalOnlyMode = clearTerminalOnlyMode;
+exports.isTerminalOnlyMode = isTerminalOnlyMode;
+exports.postTerminalInput = postTerminalInput;
 exports.setGlobalState = setGlobalState;
 exports.storeConversationSummary = storeConversationSummary;
 exports.retrieveRelevantMemories = retrieveRelevantMemories;
@@ -687,6 +691,38 @@ async function execReadTerminal(processId, name) {
 let embeddedTerminalInstance = null;
 function setEmbeddedTerminal(instance) {
     embeddedTerminalInstance = instance;
+}
+// Terminal-only mode state
+let terminalOnlySessionId = null;
+let terminalOnlyMode = false;
+function setTerminalOnlyMode(sessionId) {
+    terminalOnlySessionId = sessionId;
+    terminalOnlyMode = true;
+}
+function clearTerminalOnlyMode() {
+    terminalOnlySessionId = null;
+    terminalOnlyMode = false;
+}
+function isTerminalOnlyMode() {
+    return terminalOnlyMode;
+}
+async function postTerminalInput(input) {
+    if (!terminalOnlySessionId) {
+        return JSON.stringify({ error: "Not in terminal-only mode" });
+    }
+    const apiUrl = getApiUrl();
+    const authToken = getAuthToken();
+    try {
+        const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-input`, {
+            session_id: terminalOnlySessionId,
+            input: input
+        }, authToken);
+        return response;
+    }
+    catch (err) {
+        console.error('Terminal input POST failed:', err);
+        return JSON.stringify({ error: String(err) });
+    }
 }
 async function execTerminalCreate(name, cwd, shell) {
     // Use embedded terminal if available

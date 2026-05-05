@@ -497,6 +497,16 @@ function processServerAgentLoop(apiUrl, authToken, body, workspaceRoot, chatResp
                                     chatResponse.markdown(p.content);
                                 }
                                 break;
+                            case 'terminal_only_mode': {
+                                // Agent has switched to terminal-only mode
+                                const terminalSessionId = p.terminal_session_id || '';
+                                const sessionId = p.session_id || '';
+                                chatResponse.markdown('\n### 🖥️ Terminal-Only Mode Active\nAgent is now communicating via terminal only. Type `exit` in terminal to return to chat mode.\n');
+                                // Set terminal-only mode state
+                                (0, toolExecutor_1.setTerminalOnlyMode)(sessionId);
+                                // Client should now post terminal input to /terminal-input endpoint
+                                break;
+                            }
                             case 'execute_tool': {
                                 const toolName = p.name || '';
                                 const toolArgs = p.arguments || {};

@@ -16,7 +16,7 @@ import { EmbeddedTerminalView } from './embeddedTerminal';
 import { SettingsPanelProvider } from './settingsPanel';
 import { ResonantAgentProvider } from './agentProvider';
 import { ResonantChatViewProvider } from './chatViewProvider';
-import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl, setEmbeddedTerminal } from './toolExecutor';
+import { executeToolCall, setAuthInfo, retrieveRelevantMemories, storeConversationSummary, setApiUrl, setEmbeddedTerminal, setTerminalOnlyMode, clearTerminalOnlyMode } from './toolExecutor';
 import { LOCAL_TOOL_DEFINITIONS, TOOL_COUNT } from './toolDefinitions';
 import { initLocTracker, trackToolLOC, flushEvents as flushLocEvents, disposeLocTracker, updateLocAuth, getSessionStats, getSessionDelta } from './locTracker';
 import { initUpdateChecker, registerCommands as registerUpdateCommands, updateCheckerAuth, disposeUpdateChecker } from './updateChecker';
@@ -388,6 +388,17 @@ function processServerAgentLoop(
 							case 'text':
 								if (p.content) { chatResponse.markdown(p.content); }
 								break;
+
+							case 'terminal_only_mode': {
+								// Agent has switched to terminal-only mode
+								const terminalSessionId = p.terminal_session_id || '';
+								const sessionId = p.session_id || '';
+								chatResponse.markdown('\n### 🖥️ Terminal-Only Mode Active\nAgent is now communicating via terminal only. Type `exit` in terminal to return to chat mode.\n');
+								// Set terminal-only mode state
+								setTerminalOnlyMode(sessionId);
+								// Client should now post terminal input to /terminal-input endpoint
+								break;
+							}
 
 							case 'execute_tool': {
 								const toolName: string = p.name || '';

@@ -673,6 +673,44 @@ export function setEmbeddedTerminal(instance: EmbeddedTerminalView) {
   embeddedTerminalInstance = instance;
 }
 
+// Terminal-only mode state
+let terminalOnlySessionId: string | null = null;
+let terminalOnlyMode = false;
+
+export function setTerminalOnlyMode(sessionId: string) {
+  terminalOnlySessionId = sessionId;
+  terminalOnlyMode = true;
+}
+
+export function clearTerminalOnlyMode() {
+  terminalOnlySessionId = null;
+  terminalOnlyMode = false;
+}
+
+export function isTerminalOnlyMode(): boolean {
+  return terminalOnlyMode;
+}
+
+export async function postTerminalInput(input: string): Promise<string> {
+  if (!terminalOnlySessionId) {
+    return JSON.stringify({ error: "Not in terminal-only mode" });
+  }
+  
+  const apiUrl = getApiUrl();
+  const authToken = getAuthToken();
+  
+  try {
+    const response = await httpPost(`${apiUrl}/api/v1/ide/terminal-input`, {
+      session_id: terminalOnlySessionId,
+      input: input
+    }, authToken);
+    return response;
+  } catch (err) {
+    console.error('Terminal input POST failed:', err);
+    return JSON.stringify({ error: String(err) });
+  }
+}
+
 async function execTerminalCreate(name?: string, cwd?: string, shell?: string): Promise<string> {
   // Use embedded terminal if available
   if (embeddedTerminalInstance) {
