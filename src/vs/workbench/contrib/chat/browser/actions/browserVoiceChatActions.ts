@@ -4,12 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Codicon } from '../../../../../base/common/codicons.js';
-import { localize, localize2 } from '../../../../../nls.js';
+import { localize2 } from '../../../../../nls.js';
 import { Action2, MenuId, registerAction2 } from '../../../../../platform/actions/common/actions.js';
-import { ContextKeyExpr } from '../../../../../platform/contextkey/common/contextkey.js';
-import { IChatWidgetService } from '../../chat.js';
-import { CHAT_CATEGORY } from '../actions/chatActions.js';
-import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
+import { ServicesAccessor } from '../../../../../editor/browser/editorExtensions.js';
+import { IChatWidgetService } from '../chat.js';
+import { CHAT_CATEGORY } from './chatActions.js';
 
 export class BrowserStartVoiceChatAction extends Action2 {
 
@@ -21,7 +20,6 @@ export class BrowserStartVoiceChatAction extends Action2 {
 			title: localize2('workbench.action.chat.browserStartVoiceChat.label', "Voice Input"),
 			category: CHAT_CATEGORY,
 			icon: Codicon.mic,
-			precondition: ChatContextKeys.enabled,
 			menu: [{
 				id: MenuId.ChatExecute,
 				group: 'navigation',
