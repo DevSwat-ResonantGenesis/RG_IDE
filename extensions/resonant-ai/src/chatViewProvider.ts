@@ -454,6 +454,20 @@ cursor: pointer; font-size: 13px; font-weight: 600;
 }
 #inputArea button:hover { background: var(--vscode-button-hoverBackground); }
 #inputArea button:disabled { opacity: 0.5; cursor: not-allowed; }
+#inputArea .mic-btn {
+  padding: 6px 12px; border-radius: 6px; border: none;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  cursor: pointer; font-size: 16px; font-weight: 600;
+}
+#inputArea .mic-btn:hover { background: var(--vscode-button-hoverBackground); }
+#inputArea .mic-btn.recording {
+  background: #ef5350; animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
 .hidden { display: none !important; }
 </style>
 </head>
@@ -485,6 +499,7 @@ cursor: pointer; font-size: 13px; font-weight: 600;
 <div id="messages"></div>
 <div id="inputArea">
 	<textarea id="input" placeholder="Ask anything..." rows="1"></textarea>
+	<button id="micBtn" class="mic-btn" title="Voice input">&#127908;</button>
 	<button id="sendBtn">&#8593;</button>
 </div>
 </div>
@@ -498,12 +513,81 @@ const userDisplay = document.getElementById('userDisplay');
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
+const micBtn = document.getElementById('micBtn');
 const newBtn = document.getElementById('newBtn');
 const loginBtn = document.getElementById('loginBtn');
 const apiKeyBtn = document.getElementById('apiKeyBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 let streaming = false;
 let isLoggedIn = false;
+
+// ── Voice Recognition ──
+let recognition = null;
+let isRecording = false;
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript;
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+    if (finalTranscript) {
+      inputEl.value = inputEl.value ? inputEl.value + ' ' + finalTranscript : finalTranscript;
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    stopRecording();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      recognition.start();
+    }
+  };
+}
+
+function startRecording() {
+  if (!recognition) {
+    alert('Voice input is not supported in this browser.');
+    return;
+  }
+  isRecording = true;
+  recognition.start();
+  micBtn.classList.add('recording');
+  micBtn.innerHTML = '&#127907;';
+}
+
+function stopRecording() {
+  if (!recognition) return;
+  isRecording = false;
+  recognition.stop();
+  micBtn.classList.remove('recording');
+  micBtn.innerHTML = '&#127908;';
+}
+
+function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+micBtn.addEventListener('click', toggleRecording);
 
 function setAuthState(loggedIn, user) {
 isLoggedIn = loggedIn;
