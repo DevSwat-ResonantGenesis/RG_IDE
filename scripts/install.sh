@@ -21,7 +21,13 @@ INSTALL_DIR="${DEVSWAT_IDE_DIR:-$HOME/DevSwatIDE}"
 if [ -d "$INSTALL_DIR/.git" ]; then
   echo "→ Updating existing install at $INSTALL_DIR..."
   cd "$INSTALL_DIR"
-  git pull --ff-only
+  # Stash any local changes before pulling
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "→ Stashing local changes..."
+    git stash push -m "Auto-stash before update $(date)"
+  fi
+  git fetch origin
+  git reset --hard origin/main
 else
   echo "→ Cloning DevSwat IDE to $INSTALL_DIR..."
   git clone https://github.com/DevSwat-ResonantGenesis/RG_IDE.git "$INSTALL_DIR"
