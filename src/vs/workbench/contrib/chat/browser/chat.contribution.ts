@@ -95,6 +95,7 @@ import { registerChatElicitationActions } from './actions/chatElicitationActions
 import { registerChatToolActions } from './actions/chatToolActions.js';
 import { ChatTransferContribution } from './actions/chatTransfer.js';
 import { registerChatOpenAgentDebugPanelAction } from './actions/chatOpenAgentDebugPanelAction.js';
+import { registerBrowserVoiceChatActions } from './actions/browserVoiceChatActions.js';
 import { IChatDebugService } from '../common/chatDebugService.js';
 import { ChatDebugServiceImpl } from '../common/chatDebugServiceImpl.js';
 import { ChatImageCarouselService, IChatImageCarouselService } from './chatImageCarouselService.js';
@@ -1821,6 +1822,7 @@ registerChatElicitationActions();
 registerChatToolActions();
 registerLanguageModelActions();
 registerChatPluginActions();
+registerBrowserVoiceChatActions();
 registerAction2(ConfigureToolSets);
 registerEditorFeature(ChatPasteProvidersFeature);
 
