@@ -64,7 +64,8 @@ export class BrowserStartVoiceChatAction extends Action2 {
 				}
 			}
 			if (interimTranscript) {
-				widget.setInput(widget.getInput() + interimTranscript);
+				const currentText = widget.inputEditor.getValue();
+				widget.inputEditor.setValue(currentText + interimTranscript);
 			}
 		};
 
