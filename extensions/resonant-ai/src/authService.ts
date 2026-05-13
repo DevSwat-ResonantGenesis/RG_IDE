@@ -7,8 +7,12 @@ import * as https from 'https';
 import * as http from 'http';
 
 const AUTH_TOKEN_KEY = 'resonant_auth_token';
+const AUTH_REFRESH_KEY = 'resonant_refresh_token';
 const AUTH_USER_KEY = 'resonant_auth_user';
 const AUTH_DOMAIN_KEY = 'resonant_auth_domain';
+
+// JWT access tokens expire in 60 minutes; refresh 5 minutes before expiry
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 
 // Both production domains — try dev-swat first (resonantgenesis.xyz can be flagged by Google)
 const AUTH_DOMAINS = ['https://dev-swat.com', 'https://resonantgenesis.xyz'];
@@ -41,7 +45,122 @@ export class ResonantAuthService {
 	}
 
 	public getToken(): string {
-		return this._context.globalState.get<string>(AUTH_TOKEN_KEY, '');
+		const token = this._context.globalState.get<string>(AUTH_TOKEN_KEY, '');
+		if (token && this._isTokenNearExpiry(token)) {
+			// Fire-and-forget refresh — return current token for now
+			this._refreshIfNeeded();
+		}
+		return token;
+	}
+
+	/** Check if JWT is within 5 minutes of expiring */
+	private _isTokenNearExpiry(token: string): boolean {
+		try {
+			// JWT format: header.payload.signature — decode payload
+			const parts = token.split('.');
+			if (parts.length !== 3) { return false; } // Not a JWT (e.g. API key)
+			const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+			const exp = payload.exp;
+			if (!exp) { return false; }
+			const now = Date.now();
+			const expiresAt = exp * 1000; // exp is in seconds
+			return (expiresAt - now) < TOKEN_REFRESH_BUFFER_MS;
+		} catch {
+			return false;
+		}
+	}
+
+	private _refreshInProgress = false;
+
+	/** Refresh the access token using the stored refresh token */
+	private async _refreshIfNeeded(): Promise<void> {
+		if (this._refreshInProgress) { return; }
+		const refreshToken = this._context.globalState.get<string>(AUTH_REFRESH_KEY, '');
+		if (!refreshToken) {
+			console.log('[Resonant Auth] No refresh token available — user must re-login');
+			return;
+		}
+
+		this._refreshInProgress = true;
+		try {
+			const authDomain = this.getAuthDomain();
+			const result = await this._callRefreshEndpoint(authDomain, refreshToken);
+			if (result) {
+				await this._context.globalState.update(AUTH_TOKEN_KEY, result.accessToken);
+				if (result.refreshToken) {
+					await this._context.globalState.update(AUTH_REFRESH_KEY, result.refreshToken);
+				}
+				console.log('[Resonant Auth] Token refreshed successfully');
+				this._onDidChangeAuth.fire(true);
+			} else {
+				// Refresh failed — token is expired, force re-login
+				console.log('[Resonant Auth] Refresh failed — clearing auth');
+				await this.logout();
+			}
+		} catch (err) {
+			console.error('[Resonant Auth] Token refresh error:', err);
+		} finally {
+			this._refreshInProgress = false;
+		}
+	}
+
+	/** Call the backend /auth/refresh endpoint */
+	private _callRefreshEndpoint(
+		authDomain: string,
+		refreshToken: string,
+	): Promise<{ accessToken: string; refreshToken?: string } | null> {
+		return new Promise((resolve) => {
+			try {
+				const url = new URL(`${authDomain}/auth/refresh`);
+				const req = https.request({
+					hostname: url.hostname,
+					port: url.port || 443,
+					path: url.pathname,
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Cookie': `rg_refresh_token=${refreshToken}`,
+					},
+				}, (res) => {
+					let data = '';
+					res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+					res.on('end', () => {
+						if (res.statusCode && res.statusCode < 400) {
+							try {
+								const body = JSON.parse(data);
+								// Backend returns new tokens in response body + Set-Cookie
+								const newAccess = body.access_token || '';
+								const newRefresh = body.refresh_token || '';
+								// Also check Set-Cookie header for tokens
+								let cookieAccess = '';
+								let cookieRefresh = '';
+								const cookies = res.headers['set-cookie'] || [];
+								for (const c of cookies) {
+									const m = c.match(/rg_access_token=([^;]+)/);
+									if (m) { cookieAccess = decodeURIComponent(m[1]); }
+									const mr = c.match(/rg_refresh_token=([^;]+)/);
+									if (mr) { cookieRefresh = decodeURIComponent(mr[1]); }
+								}
+								const accessToken = newAccess || cookieAccess;
+								if (accessToken) {
+									resolve({ accessToken, refreshToken: newRefresh || cookieRefresh || undefined });
+								} else {
+									resolve(null);
+								}
+							} catch {
+								resolve(null);
+							}
+						} else {
+							resolve(null);
+						}
+					});
+				});
+				req.on('error', () => resolve(null));
+				req.end();
+			} catch {
+				resolve(null);
+			}
+		});
 	}
 
 	public getUser(): UserInfo | null {
@@ -122,6 +241,7 @@ export class ResonantAuthService {
 
 	public async logout(): Promise<void> {
 		await this._context.globalState.update(AUTH_TOKEN_KEY, undefined);
+		await this._context.globalState.update(AUTH_REFRESH_KEY, undefined);
 		await this._context.globalState.update(AUTH_USER_KEY, undefined);
 		await this._context.globalState.update('resonant_auth_sessions', []);
 		this._onDidChangeAuth.fire(false);
@@ -221,7 +341,13 @@ export class ResonantAuthService {
 
 				if (url.pathname === '/auth-callback') {
 					const token = url.searchParams.get('token');
+					const refreshToken = url.searchParams.get('refresh_token');
 					if (token) {
+						// Store refresh token for automatic token renewal
+						if (refreshToken) {
+							await this._context.globalState.update(AUTH_REFRESH_KEY, refreshToken);
+							console.log('[Resonant Auth] Refresh token stored');
+						}
 						res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
 						res.end([
 							'<!DOCTYPE html><html><head><meta charset="utf-8"><title>DevSwat IDE</title>',

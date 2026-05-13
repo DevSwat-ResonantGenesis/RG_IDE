@@ -44,7 +44,10 @@ public resolveWebviewView(
 	_token: vscode.CancellationToken,
 ) {
 	this._view = webviewView;
-	webviewView.webview.options = { enableScripts: true };
+		webviewView.webview.options = {
+			enableScripts: true,
+			localResourceRoots: [this._extensionUri]
+		};
 	webviewView.webview.html = this._getHtml();
 
 	// Send initial auth state
@@ -366,11 +369,12 @@ flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; 
 .step.status { color: var(--vscode-descriptionForeground); font-style: italic; }
 .step.done { color: #81c784; font-weight: 600; }
 
+/* allow-any-unicode-next-line */
 /* ── Tool Call Blocks ── */
 .tool-block { border-radius: 6px; margin: 4px 0; overflow: hidden; font-size: 12px; border: 1px solid var(--vscode-panel-border); }
 .tool-block .tool-header {
-  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
-  font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
+	display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+	font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
 }
 .tool-block .tool-header:hover { filter: brightness(1.1); }
 .tool-block .tool-header .tool-icon { font-size: 13px; }
@@ -381,9 +385,9 @@ flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; 
 .tool-block .tool-body { padding: 0 10px 8px; display: none; }
 .tool-block .tool-body.open { display: block; }
 .tool-block .tool-body pre {
-  margin: 0; padding: 6px 8px; border-radius: 4px; font-size: 11px; line-height: 1.4;
-  font-family: var(--vscode-editor-font-family, 'Menlo', monospace);
-  white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto;
+	margin: 0; padding: 6px 8px; border-radius: 4px; font-size: 11px; line-height: 1.4;
+	font-family: var(--vscode-editor-font-family, 'Menlo', monospace);
+	white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto;
 }
 
 /* Terminal command blocks */
@@ -455,18 +459,18 @@ cursor: pointer; font-size: 13px; font-weight: 600;
 #inputArea button:hover { background: var(--vscode-button-hoverBackground); }
 #inputArea button:disabled { opacity: 0.5; cursor: not-allowed; }
 #inputArea .mic-btn {
-  padding: 6px 12px; border-radius: 6px; border: none;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  cursor: pointer; font-size: 16px; font-weight: 600;
+	padding: 6px 12px; border-radius: 6px; border: none;
+	background: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	cursor: pointer; font-size: 16px; font-weight: 600;
 }
 #inputArea .mic-btn:hover { background: var(--vscode-button-hoverBackground); }
 #inputArea .mic-btn.recording {
-  background: #ef5350; animation: pulse 1.5s infinite;
+	background: #ef5350; animation: pulse 1.5s infinite;
 }
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.5; }
 }
 .hidden { display: none !important; }
 </style>
@@ -521,6 +525,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 let streaming = false;
 let isLoggedIn = false;
 
+// allow-any-unicode-next-line
 // ── Voice Recognition ──
 let recognition = null;
 let isRecording = false;
@@ -641,6 +646,7 @@ addElement('msg user', escHtml(text));
 vscode.postMessage({ type: 'sendMessage', text });
 }
 
+// allow-any-unicode-next-line
 // ── Tool category detection ──
 const TERMINAL_TOOLS = ['run_command','command_status','read_terminal','terminal_create','terminal_send','terminal_send_raw','terminal_read','terminal_wait','terminal_list','terminal_close','terminal_clear'];
 const FILE_TOOLS = ['file_read','file_write','file_edit','multi_edit','file_delete','file_move','file_list'];
@@ -693,6 +699,7 @@ function shortPath(p) {
   return parts.length > 3 ? '.../' + parts.slice(-2).join('/') : p;
 }
 
+// allow-any-unicode-next-line
 // ── Render tool call block ──
 const _pendingToolBlocks = {};
 
@@ -781,6 +788,7 @@ function toggleToolBody(header) {
   }
 }
 
+// allow-any-unicode-next-line
 // ── Update tool result into existing block ──
 function updateToolResult(data) {
   const block = _pendingToolBlocks[data.id];
@@ -854,6 +862,7 @@ function updateToolResult(data) {
   delete _pendingToolBlocks[data.id];
 }
 
+// allow-any-unicode-next-line
 // ── Lightweight markdown renderer ──
 function renderMarkdown(text) {
   if (!text) return '';
