@@ -563,6 +563,10 @@ function processServerAgentLoop(
 							}
 
 							case 'stats':
+								// Track conversation_id from server for persistent context
+								if (p.conversation_id) {
+									currentConversationId = p.conversation_id;
+								}
 								if (Array.isArray(p.fallback_chain)) {
 									for (const fb of p.fallback_chain) {
 										if (!fallbackChain.some(e => e.provider === fb.provider && e.attempt === fb.attempt)) {
@@ -627,6 +631,9 @@ let authService: ResonantAuthService;
 
 let embeddedTerminalView: EmbeddedTerminalView | undefined;
 
+// Persistent conversation ID — tracks full tool context on the server across messages
+let currentConversationId: string | undefined;
+
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('[DevSwat AI] Extension activating...');
 
@@ -683,7 +690,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			const configuredUrl = config.get<string>('apiUrl', '');
 			const apiUrl = configuredUrl || authService.getAuthDomain();
 			const authToken = authService.getToken();
-			const configuredLoops = config.get<number>('maxToolLoops', 15);
+			const rawLoops = config.get<number>('maxToolLoops', 25);
+			const configuredLoops = (typeof rawLoops === 'number' && !isNaN(rawLoops) && rawLoops >= 0) ? rawLoops : 25;
 			const maxLoops = configuredLoops === 0 ? 999999 : configuredLoops; // 0 = unlimited
 			const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 			const workspaceRoot = workspaceFolder || require('os').homedir();
@@ -786,6 +794,12 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ═══════════════════════════════════════════════════════════
 				// SERVER-SIDE AGENTIC LOOP — thin client (ALL providers)
 				// ═══════════════════════════════════════════════════════════
+
+				// Reset conversation_id when user starts a new chat (no history)
+				if (chatContext.history.length === 0) {
+					currentConversationId = undefined;
+				}
+
 				const chatHistoryContext: Array<{ role: string; content: string }> = [];
 				for (const turn of chatContext.history) {
 					if (turn instanceof vscode.ChatRequestTurn) {
@@ -796,18 +810,20 @@ export async function activate(context: vscode.ExtensionContext) {
 							if (part instanceof vscode.ChatResponseMarkdownPart) { text += part.value.value; }
 						}
 						if (text) {
-							// Strip tool call UI, LOC stats, and other non-content noise
+							// Keep tool call labels (they contain file paths, search queries — useful context)
+							// Only strip UI noise (LOC stats, provider chain, metrics footer)
 							let cleaned = text
-								.replace(/\n\n> ⚡[^\n]*\n/g, '\n')  // tool call labels
-								.replace(/```[\s\S]*?```/g, '')        // code blocks (tool previews)
+								.replace(/```[\s\S]*?```/g, (m) => m.length > 400 ? m.slice(0, 400) + '\n...\n```' : m)
 								.replace(/\n\n---\n\*🔧[\s\S]*?\*\n?/g, '\n')
 								.replace(/\n\*✏️ Session LOC:[^\n]*\n?/g, '\n')
-								.replace(/\n\*⚡[^\n]*\n?/g, '\n')
-								.replace(/\n{3,}/g, '\n\n')            // collapse multiple newlines
+								.replace(/\n\*⚡ Provider chain:[^\n]*\n?/g, '\n')
+								.replace(/\n\*⚡ Preferred:[^\n]*\n?/g, '\n')
+								.replace(/\n{3,}/g, '\n\n')
 								.trim();
-							// Truncate very long assistant responses to keep context manageable
-							if (cleaned.length > 800) {
-								cleaned = cleaned.slice(0, 800) + '\n... (truncated)';
+							// With server-side conversation persistence, this is a fallback only —
+							// keep more context for when conversation_id isn't available
+							if (cleaned.length > 3000) {
+								cleaned = cleaned.slice(0, 3000) + '\n... (truncated)';
 							}
 							if (cleaned) { chatHistoryContext.push({ role: 'assistant', content: cleaned }); }
 						}
@@ -855,6 +871,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					tools: LOCAL_TOOL_DEFINITIONS,
 					ide_metadata: ideMetadata,
 					workspace_layout: workspaceLayout || undefined,
+					conversation_id: currentConversationId || undefined,
 				};
 				if (providerKey === 'ollama') {
 					const localLLMConfig = vscode.workspace.getConfiguration('resonant.localLLM');
@@ -880,7 +897,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				const preferredStr = `${providerKey}/${modelName}`;
 				const actualStr = lastProvider ? `${lastProvider}${lastModel ? '/' + lastModel : ''}` : '';
 				const fbChain = stats.fallbackChain || [];
-				response.markdown(`\n\n---\n*🔧 ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''} · ${loops} loop${loops > 1 ? 's' : ''}${tokenStr} · ${elapsed}s${providerStr}*\n`);
+				const loopLimit = configuredLoops === 0 ? '∞' : String(configuredLoops);
+				response.markdown(`\n\n---\n*🔧 ${totalToolCalls} tool call${totalToolCalls !== 1 ? 's' : ''} · ${loops}/${loopLimit} loops${tokenStr} · ${elapsed}s${providerStr}*\n`);
 				if (fbChain.length > 0) {
 					// Deduplicate chain by provider (show unique providers tried)
 					const seen = new Set<string>();
@@ -942,6 +960,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('resonant.newConversation', () => {
+			currentConversationId = undefined;
 			vscode.commands.executeCommand('workbench.action.chat.newChat');
 		}),
 	);

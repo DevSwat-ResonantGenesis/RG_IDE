@@ -101,7 +101,9 @@ public newConversation() {
 private async _handleUserMessage(text: string) {
 	const config = vscode.workspace.getConfiguration('resonant');
 	const apiUrl = config.get<string>('apiUrl', 'https://dev-swat.com');
-	const maxLoops = config.get<number>('maxToolLoops', 15);
+	const rawLoops = config.get<number>('maxToolLoops', 25);
+	const validLoops = (typeof rawLoops === 'number' && !isNaN(rawLoops) && rawLoops >= 0) ? rawLoops : 25;
+	const maxLoops = validLoops === 0 ? 999999 : validLoops; // 0 = unlimited
 
 	const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp';
 

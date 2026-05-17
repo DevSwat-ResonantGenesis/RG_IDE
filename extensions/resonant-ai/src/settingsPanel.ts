@@ -114,8 +114,17 @@ export class SettingsPanelProvider {
 					await this.refreshPanel();
 					break;
 				case 'setSetting':
-					if (msg.key && msg.value !== undefined) {
-						await vscode.workspace.getConfiguration('resonant').update(msg.key, msg.value, vscode.ConfigurationTarget.Global);
+					if (msg.key && msg.value !== undefined && msg.value !== null) {
+						const val = typeof msg.value === 'number' && !isNaN(msg.value) ? msg.value : undefined;
+						if (val !== undefined) {
+							await vscode.workspace.getConfiguration('resonant').update(msg.key, val, vscode.ConfigurationTarget.Global);
+							// Verify the save worked by re-reading
+							const saved = vscode.workspace.getConfiguration('resonant').get(msg.key);
+							if (msg.key === 'maxToolLoops') {
+								const label = val === 0 ? 'Unlimited' : String(val);
+								vscode.window.showInformationMessage(`Max Tool Loops set to ${label}`);
+							}
+						}
 					}
 					break;
 				case 'addProviderKey': {
@@ -424,7 +433,7 @@ export class SettingsPanelProvider {
 					</div>
 					<div class="setting-row">
 						<div class="setting-label">Max Tool Loops</div>
-						<select class="setting-select" onchange="post('setSetting', {key:'maxToolLoops', value:parseInt(this.value)})">
+						<select class="setting-select" onchange="var v=Number(this.value); if(!isNaN(v)) post('setSetting', {key:'maxToolLoops', value:v})">
 							<option value="5" ${maxToolLoops === 5 ? 'selected' : ''}>5</option>
 							<option value="10" ${maxToolLoops === 10 ? 'selected' : ''}>10</option>
 							<option value="15" ${maxToolLoops === 15 ? 'selected' : ''}>15</option>
