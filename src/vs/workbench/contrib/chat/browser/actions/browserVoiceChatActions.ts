@@ -1,25 +1,27 @@
-import { Action2, MenuId } from '../../../../../platform/actions/common/actions.js';
-import { ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { Codicon } from '../../../../../base/common/codicons.js';
+import { localize2 } from '../../../../../nls.js';
+import { Action2, MenuId, registerAction2 } from '../../../../../platform/actions/common/actions.js';
+import { ServicesAccessor } from '../../../../../editor/browser/editorExtensions.js';
 import { IChatWidgetService } from '../chat.js';
 import { CHAT_CATEGORY } from './chatActions.js';
-import { ISpeechService, SpeechToTextStatus } from '../../speech/common/speechService.js';
-import { CancellationTokenSource } from '../../../../../base/common/cancellation.js';
-import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 
 export class BrowserStartVoiceChatAction extends Action2 {
-	static readonly ID = 'workbench.action.chat.startVoiceChat';
 
-	private static cts: CancellationTokenSource | undefined;
+	static readonly ID = 'workbench.action.chat.browserStartVoiceChat';
 
 	constructor() {
 		super({
 			id: BrowserStartVoiceChatAction.ID,
-			title: { value: 'Start Voice Chat', original: 'Start Voice Chat' },
+			title: localize2('workbench.action.chat.browserStartVoiceChat.label', "Voice Input"),
 			category: CHAT_CATEGORY,
-			f1: true,
+			icon: Codicon.mic,
 			menu: [{
-				id: MenuId.ChatInputSide,
-				when: undefined,
+				id: MenuId.ChatExecute,
 				group: 'navigation',
 				order: 2.5
 			}]
@@ -28,35 +30,40 @@ export class BrowserStartVoiceChatAction extends Action2 {
 
 	async run(accessor: ServicesAccessor): Promise<void> {
 		const widgetService = accessor.get(IChatWidgetService);
-		const speechService = accessor.get(ISpeechService);
 		const widget = widgetService.lastFocusedWidget;
-
 		if (!widget) {
 			return;
 		}
 
-		if (BrowserStartVoiceChatAction.cts) {
-			BrowserStartVoiceChatAction.cts.cancel();
-			BrowserStartVoiceChatAction.cts.dispose();
-			BrowserStartVoiceChatAction.cts = undefined;
+		// Focus the input
+		widget.focusInput();
+
+		// Use Web Speech API
+		if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+			alert('Voice input is not supported in this browser.');
 			return;
 		}
 
-		BrowserStartVoiceChatAction.cts = new CancellationTokenSource();
-		const disposables = new DisposableStore();
+		const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+		const recognition = new SpeechRecognition();
+		recognition.continuous = false;
+		recognition.interimResults = false;
+		recognition.lang = 'en-US';
 
-		const session = await speechService.createSpeechToTextSession(BrowserStartVoiceChatAction.cts.token);
+		recognition.onresult = (event: any) => {
+			const transcript = event.results[0][0].transcript;
+			const currentText = widget.inputEditor.getValue();
+			widget.inputEditor.setValue(currentText + transcript);
+		};
 
-		disposables.add(session.onDidChange(e => {
-			if (e.status === SpeechToTextStatus.Recognizing || e.status === SpeechToTextStatus.Recognized) {
-				if (e.text) {
-					widget.setInput(e.text);
-				}
-			}
-		}));
+		recognition.onerror = (event: any) => {
+			console.error('Speech recognition error:', event.error);
+		};
 
-		disposables.add(BrowserStartVoiceChatAction.cts.token.onCancellationRequested(() => {
-			disposables.dispose();
-		}));
+		recognition.start();
 	}
+}
+
+export function registerBrowserVoiceChatActions() {
+	registerAction2(BrowserStartVoiceChatAction);
 }

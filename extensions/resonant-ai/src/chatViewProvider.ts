@@ -46,7 +46,7 @@ public resolveWebviewView(
 	this._view = webviewView;
 		webviewView.webview.options = {
 			enableScripts: true,
-			localResourceRoots: [this._extensionUri]
+			localResourceRoots: [this._context.extensionUri]
 		};
 	webviewView.webview.html = this._getHtml();
 
